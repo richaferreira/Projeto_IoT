@@ -155,12 +155,52 @@ Projeto_IoT/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
-└── docs/
-    └── imagens/
-        ├── montagem-circuito-01.jpg
-        ├── montagem-circuito-02.jpg
-        └── montagem-circuito-03.jpg
+├── docs/
+│   ├── requisitos-nao-funcionais.md   # Requisitos nao funcionais (ISO 25010)
+│   └── imagens/
+│       ├── montagem-circuito-01.jpg
+│       ├── montagem-circuito-02.jpg
+│       └── montagem-circuito-03.jpg
+└── frontend/
+    ├── index.html            # Dashboard web de monitoramento
+    ├── style.css             # Estilos do dashboard
+    └── app.js                # Logica de simulacao (espelho do codigo.ino)
 ```
+
+---
+
+## Dashboard Web (Frontend)
+
+O projeto inclui um dashboard web interativo que simula o comportamento do sistema de alarme em tempo real. Para abrir:
+
+```bash
+# Basta abrir o arquivo no navegador
+open frontend/index.html
+# ou
+xdg-open frontend/index.html
+```
+
+### Funcionalidades do Dashboard
+
+- **Painel de status** com badge colorido (SEGURO / ALERTA / PERIGO / SILENCIADO)
+- **LEDs virtuais** que replicam os LEDs fisicos do circuito
+- **Gauge (velocimetro)** com leitura do sensor em tempo real
+- **Grafico de historico** com as ultimas 200 leituras e faixas de limiares
+- **Display de 7 segmentos** que simula a contagem regressiva durante o silenciamento
+- **Diagrama de estados** interativo que destaca o estado atual
+- **Controles de simulacao**: slider para ajustar o nivel do sensor, botoes de preset e modo automatico
+- **Monitor serial** que replica a saida do `Serial.print()` do Arduino
+- **Audio simulado**: buzzer virtual com Web Audio API
+
+> O frontend nao requer instalacao de dependencias — funciona 100% no navegador com HTML5, CSS3 e JavaScript vanilla.
+
+---
+
+## Requisitos Nao Funcionais
+
+A documentacao completa de requisitos nao funcionais esta em [`docs/requisitos-nao-funcionais.md`](docs/requisitos-nao-funcionais.md).
+
+Os 29 requisitos seguem a norma **ISO/IEC 25010** e cobrem: desempenho, confiabilidade, seguranca fisica, usabilidade, manutenibilidade, portabilidade, eficiencia energetica, escalabilidade e observabilidade.
 
 ---
 
