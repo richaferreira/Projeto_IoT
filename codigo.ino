@@ -75,9 +75,11 @@ enum EstadoSistema {
 EstadoSistema estadoAtual     = SEGURO;
 EstadoSistema estadoAnterior  = SEGURO;
 
-bool           estadoAnteriorBotao = HIGH;
-unsigned long  tempoAnteriorLeitura = 0;
-unsigned long  tempoUltimoBotao     = 0;
+bool           leituraBotaoAnterior   = HIGH;
+bool           estadoBotaoDebounced   = HIGH;
+unsigned long  tempoAnteriorLeitura   = 0;
+unsigned long  tempoUltimoBotao       = 0;
+bool           primeiraLeitura        = true;
 
 // =============================================================================
 // SETUP
@@ -130,7 +132,8 @@ void loop() {
   int nivelChama = analogRead(PINO_SENSOR);
   EstadoSistema novoEstado = calcularEstado(nivelChama);
 
-  if (novoEstado != estadoAtual) {
+  if (novoEstado != estadoAtual || primeiraLeitura) {
+    primeiraLeitura = false;
     estadoAnterior = estadoAtual;
     estadoAtual = novoEstado;
     aplicarEstado(estadoAtual);
@@ -211,17 +214,17 @@ void imprimirEstado(int leitura) {
 void verificarBotao() {
   bool leituraBotao = digitalRead(PINO_BOTAO);
 
-  if (leituraBotao != estadoAnteriorBotao) {
+  if (leituraBotao != leituraBotaoAnterior) {
     tempoUltimoBotao = millis();
   }
+  leituraBotaoAnterior = leituraBotao;
 
   if ((millis() - tempoUltimoBotao) > DEBOUNCE_MS) {
-    if (leituraBotao == LOW && estadoAnteriorBotao == HIGH) {
+    if (leituraBotao == LOW && estadoBotaoDebounced == HIGH) {
       executarSilenciamento();
     }
+    estadoBotaoDebounced = leituraBotao;
   }
-
-  estadoAnteriorBotao = leituraBotao;
 }
 
 void executarSilenciamento() {
