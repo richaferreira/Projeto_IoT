@@ -3,6 +3,11 @@
 // Plataforma: Arduino UNO
 // =============================================================================
 
+// ===================== CONFIGURACAO DO DISPLAY ===============================
+// Se o display nao mostrar os numeros corretos, troque para false:
+const bool ANODO_COMUM = false;  // true = anodo comum | false = catodo comum
+// =============================================================================
+
 // ---------- Limiares de deteccao (ajuste conforme o ambiente) ----------------
 const int LIMIAR_SEGURO     = 700;  // acima: ambiente seguro (verde)
 const int LIMIAR_ALERTA     = 300;  // entre ALERTA e SEGURO: chama detectada (amarelo)
@@ -18,7 +23,7 @@ const unsigned int  FREQ_ALARME_HZ       = 2500;   // frequencia do alarme criti
 const unsigned int  FREQ_BIPE_HZ         = 2000;   // frequencia do bipe de contagem
 const unsigned int  DURACAO_BIPE_MS      = 50;     // duracao do bipe de contagem
 
-// ---------- Mapeamento de pinos: Display 7 segmentos (Anodo Comum) -----------
+// ---------- Mapeamento de pinos: Display 7 segmentos -------------------------
 const int SEG_A  = 13;
 const int SEG_B  = 3;
 const int SEG_C  = A4;
@@ -104,6 +109,8 @@ void setup() {
   resetLEDs();
 
   Serial.println(F("=== Alarme de Incendio IoT ==="));
+  Serial.print(F("Display configurado como: "));
+  Serial.println(ANODO_COMUM ? F("ANODO COMUM") : F("CATODO COMUM"));
   Serial.println(F("Limiares configurados:"));
   Serial.print(F("  Seguro  > ")); Serial.println(LIMIAR_SEGURO);
   Serial.print(F("  Alerta  > ")); Serial.print(LIMIAR_ALERTA);
@@ -249,12 +256,13 @@ void executarSilenciamento() {
 }
 
 // =============================================================================
-// FUNCOES DO DISPLAY DE 7 SEGMENTOS (ANODO COMUM)
+// FUNCOES DO DISPLAY DE 7 SEGMENTOS
 // =============================================================================
 
 void desligarDisplay() {
   for (int i = 0; i < NUM_SEGMENTOS; i++) {
-    digitalWrite(PINOS_DISPLAY[i], HIGH);  // HIGH desliga no anodo comum
+    // Anodo comum: HIGH desliga | Catodo comum: LOW desliga
+    digitalWrite(PINOS_DISPLAY[i], ANODO_COMUM ? HIGH : LOW);
   }
 }
 
@@ -265,8 +273,17 @@ void mostrarNumero(int num) {
   }
 
   for (int i = 0; i < 7; i++) {
-    digitalWrite(PINOS_DISPLAY[i], !DIGITOS[num][i]);  // inverte para anodo comum
+    if (ANODO_COMUM) {
+      // Anodo comum: inverte (1 -> LOW = acende, 0 -> HIGH = apaga)
+      digitalWrite(PINOS_DISPLAY[i], !DIGITOS[num][i]);
+    } else {
+      // Catodo comum: direto (1 -> HIGH = acende, 0 -> LOW = apaga)
+      digitalWrite(PINOS_DISPLAY[i], DIGITOS[num][i]);
+    }
   }
+
+  // Desliga o ponto decimal
+  digitalWrite(PINOS_DISPLAY[7], ANODO_COMUM ? HIGH : LOW);
 }
 
 // =============================================================================
