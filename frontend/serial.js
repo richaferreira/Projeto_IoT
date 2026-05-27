@@ -78,9 +78,41 @@
   let statsSum    = 0;
   let statsCount  = 0;
 
+  // ---------- Contagem regressiva (simulada no JS) ---------------------------
+  let contagemTimer = null;
+  let contagemAtual = -1;
+
+  function iniciarContagem(segundos) {
+    pararContagem();
+    contagemAtual = segundos - 1; // Arduino começa em CONTAGEM_REGRESSIVA - 1
+    mostrarNumero(contagemAtual);
+    display7Hint.textContent = `Contagem: ${contagemAtual}s`;
+
+    contagemTimer = setInterval(() => {
+      contagemAtual--;
+      if (contagemAtual < 0) {
+        pararContagem();
+        desligarDisplay();
+        display7Hint.textContent = "Ativo durante o silenciamento";
+        return;
+      }
+      mostrarNumero(contagemAtual);
+      display7Hint.textContent = `Contagem: ${contagemAtual}s`;
+    }, 1000);
+  }
+
+  function pararContagem() {
+    if (contagemTimer !== null) {
+      clearInterval(contagemTimer);
+      contagemTimer = null;
+    }
+    contagemAtual = -1;
+  }
+
   // ---------- Web Serial -----------------------------------------------------
   let port   = null;
   let reader = null;
+  let readableStreamClosed = null;
   let buffer = "";
 
   async function conectar() {
@@ -115,10 +147,17 @@
   }
 
   async function desconectar() {
+    pararContagem();
+
     try {
       if (reader) {
         await reader.cancel();
+        reader.releaseLock();
         reader = null;
+      }
+      if (readableStreamClosed) {
+        await readableStreamClosed.catch(() => {});
+        readableStreamClosed = null;
       }
       if (port) {
         await port.close();
@@ -138,12 +177,13 @@
 
   async function lerDados() {
     const decoder = new TextDecoderStream();
-    const readableStreamClosed = port.readable.pipeTo(decoder.writable);
-    reader = decoder.readable.getReader();
+    readableStreamClosed = port.readable.pipeTo(decoder.writable);
+    const localReader = decoder.readable.getReader();
+    reader = localReader;
 
     try {
       while (true) {
-        const { value, done } = await reader.read();
+        const { value, done } = await localReader.read();
         if (done) break;
         if (value) {
           buffer += value;
@@ -154,10 +194,8 @@
       if (err.name !== "TypeError") {
         logSerial(`Erro de leitura: ${err.message}`, "danger");
       }
-    } finally {
-      reader.releaseLock();
-      try { await readableStreamClosed; } catch (_) {}
     }
+    // Cleanup é feito em desconectar() para evitar race conditions
   }
 
   function processarBuffer() {
@@ -208,16 +246,16 @@
       updateStateDiagram(ESTADO.SILENCIADO);
     }
 
-    // Contagem regressiva (display mostra dígito)
+    // Contagem regressiva — simula localmente com timer
     const matchContagem = linha.match(/reiniciando em (\d+)s/i);
     if (matchContagem) {
       const segundos = parseInt(matchContagem[1], 10);
-      mostrarNumero(segundos - 1);
-      display7Hint.textContent = `Contagem: ${segundos - 1}s`;
+      iniciarContagem(segundos);
     }
 
     // Monitoramento retomado
     if (/retomado/i.test(linha)) {
+      pararContagem();
       desligarDisplay();
       display7Hint.textContent = "Ativo durante o silenciamento";
       estadoAtual = ESTADO.SEGURO;
@@ -234,7 +272,7 @@
     return "";
   }
 
-  // ---------- UI updates (mesmas funções do app.js de simulação) -------------
+  // ---------- UI updates -----------------------------------------------------
   function setLEDs(green, yellow, red) {
     ledGreen1.classList.toggle("led--on", green);
     ledGreen2.classList.toggle("led--on", green);
