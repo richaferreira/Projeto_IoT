@@ -3,204 +3,222 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alarme de Incêndio IoT — Conexão Serial</title>
+  <title>ALARME IOT — PAINEL DE MONITORAMENTO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ====== HEADER ====== -->
-  <header class="header">
-    <div class="header__logo">
-      <span class="header__icon" aria-hidden="true">🔥</span>
-      <h1>Alarme de Incêndio IoT</h1>
-    </div>
-    <p class="header__subtitle">Monitoramento em tempo real via Web Serial API — Arduino UNO</p>
-  </header>
-
-  <main class="dashboard">
-    <!-- ====== CONEXÃO SERIAL ====== -->
-    <section class="card card--serial-connect" id="serialConnectCard">
-      <h2 class="card__title">Conexão com Arduino</h2>
-
-      <div class="serial-status" id="serialStatus">
-        <span class="serial-status__dot serial-status__dot--off" id="serialDot"></span>
-        <span id="serialStatusText">Desconectado</span>
+  <div class="container">
+    <!-- ====== HEADER / SISTEMA ====== -->
+    <header class="header">
+      <div class="header__top">
+        <div class="header__branding">
+          <h1>◆ ALARME INCÊNDIO IOT</h1>
+          <span class="header__subtitle">Sistema de Detecção em Tempo Real • Arduino UNO</span>
+        </div>
+        <div class="header__clock" id="headerClock">--:--:--</div>
       </div>
 
-      <div class="serial-config">
-        <div class="control-group">
-          <label for="baudRate">Baud Rate</label>
-          <select id="baudRate">
-            <option value="4800">4800</option>
-            <option value="9600" selected>9600</option>
-            <option value="19200">19200</option>
-            <option value="38400">38400</option>
-            <option value="57600">57600</option>
-            <option value="115200">115200</option>
-          </select>
+      <!-- ====== ESTADO GLOBAL ====== -->
+      <div class="state-bar">
+        <div class="state-bar__node state-bar__node--seguro" id="stateBarSeguro">
+          <span class="state-bar__dot"></span>
+          <span>SEGURO</span>
+        </div>
+        <div class="state-bar__arrow">→</div>
+        <div class="state-bar__node state-bar__node--alerta" id="stateBarAlerta">
+          <span class="state-bar__dot"></span>
+          <span>ALERTA</span>
+        </div>
+        <div class="state-bar__arrow">→</div>
+        <div class="state-bar__node state-bar__node--perigo" id="stateBarPerigo">
+          <span class="state-bar__dot"></span>
+          <span>PERIGO</span>
+        </div>
+        <div class="state-bar__arrow">↓</div>
+        <div class="state-bar__node state-bar__node--silenciado" id="stateBarSilenciado">
+          <span class="state-bar__dot"></span>
+          <span>SILENCIADO</span>
         </div>
       </div>
+    </header>
 
-      <button class="btn btn--muted btn--wide" id="btnConnect">
-        🔌 Conectar ao Arduino
-      </button>
+    <!-- ====== GRID PRINCIPAL ====== -->
+    <main class="grid">
 
-      <p class="serial-note">
-        Requer <strong>Google Chrome 89+</strong> ou Edge 89+.
-        <br />O Arduino deve estar conectado via USB e enviando dados no
-        formato: <code>Sensor: XXX | Estado: YYY</code>
-      </p>
-    </section>
-
-    <!-- ====== PAINEL DE STATUS ====== -->
-    <section class="card card--status" id="statusCard">
-      <h2 class="card__title">Estado do Sistema</h2>
-
-      <div class="status-badge" id="statusBadge">
-        <span class="status-badge__icon" id="statusIcon">—</span>
-        <span class="status-badge__label" id="statusLabel">AGUARDANDO</span>
-      </div>
-
-      <p class="status-desc" id="statusDesc">Conecte o Arduino para iniciar o monitoramento.</p>
-
-      <!-- LEDs virtuais -->
-      <div class="leds" aria-label="Indicadores LED">
-        <div class="led led--green" id="ledGreen1"></div>
-        <div class="led led--green" id="ledGreen2"></div>
-        <div class="led led--yellow" id="ledYellow1"></div>
-        <div class="led led--yellow" id="ledYellow2"></div>
-        <div class="led led--red" id="ledRed1"></div>
-        <div class="led led--red" id="ledRed2"></div>
-      </div>
-    </section>
-
-    <!-- ====== PAINEL DO SENSOR (GAUGE) ====== -->
-    <section class="card card--sensor">
-      <h2 class="card__title">Medição do Sensor</h2>
-
-      <div class="gauge-wrapper">
-        <canvas id="gaugeCanvas" width="340" height="220"></canvas>
-        <div class="gauge-center-info">
-          <span class="gauge__value" id="gaugeValue">—</span>
-          <span class="gauge__unit">/ 1023</span>
+      <!-- 1. STATUS CRÍTICO -->
+      <section class="cell cell--status" id="statusCell">
+        <div class="cell__header">STATUS</div>
+        <div class="cell__body">
+          <div class="status-display" id="statusDisplay">
+            <span class="status-display__icon" id="statusIcon">—</span>
+            <span class="status-display__text" id="statusText">AGUARDANDO</span>
+          </div>
+          <p class="status-display__desc" id="statusDesc">Desconectado do Arduino</p>
         </div>
-      </div>
+      </section>
 
-      <div class="sensor-meta">
-        <div class="sensor-meta__item">
-          <span class="sensor-meta__label">Mínimo</span>
-          <span class="sensor-meta__val" id="sensorMin">—</span>
+      <!-- 2. CONEXÃO SERIAL -->
+      <section class="cell cell--controls">
+        <div class="cell__header">CONEXÃO</div>
+        <div class="cell__body">
+          <div class="control-group">
+            <label>Baud Rate</label>
+            <select id="baudRate" class="control__select">
+              <option value="4800">4800</option>
+              <option value="9600" selected>9600</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="57600">57600</option>
+              <option value="115200">115200</option>
+            </select>
+          </div>
+          <div class="serial-status" id="serialStatus">
+            <span class="serial-status__dot" id="serialDot"></span>
+            <span id="serialStatusText">DESCONECTADO</span>
+          </div>
+          <button class="btn btn--primary" id="btnConnect">CONECTAR</button>
+          <button class="btn btn--secondary" id="btnExport">EXPORTAR</button>
         </div>
-        <div class="sensor-meta__item">
-          <span class="sensor-meta__label">Máximo</span>
-          <span class="sensor-meta__val" id="sensorMax">—</span>
-        </div>
-        <div class="sensor-meta__item">
-          <span class="sensor-meta__label">Média</span>
-          <span class="sensor-meta__val" id="sensorAvg">—</span>
-        </div>
-      </div>
+      </section>
 
-      <!-- Limiares visuais -->
-      <div class="thresholds">
-        <div class="threshold threshold--red">
-          <span class="threshold__marker"></span>
-          <span>0 – 300 — Perigo</span>
+      <!-- 3. GAUGE / SENSOR -->
+      <section class="cell cell--gauge">
+        <div class="cell__header">MEDIÇÃO</div>
+        <div class="cell__body">
+          <div class="gauge-container">
+            <canvas id="gaugeCanvas" width="240" height="160"></canvas>
+            <div class="gauge-value" id="gaugeValue">—</div>
+          </div>
         </div>
-        <div class="threshold threshold--yellow">
-          <span class="threshold__marker"></span>
-          <span>301 – 700 — Alerta</span>
-        </div>
-        <div class="threshold threshold--green">
-          <span class="threshold__marker"></span>
-          <span>701 – 1023 — Seguro</span>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ====== DISPLAY 7-SEGMENTOS ====== -->
-    <section class="card card--display7">
-      <h2 class="card__title">Display 7 Segmentos</h2>
-      <div class="seven-seg" id="sevenSeg" aria-label="Display 7 segmentos">
-        <svg viewBox="0 0 100 160" class="seven-seg__svg">
-          <polygon id="segA" class="seg" points="18,8 82,8 76,18 24,18" />
-          <polygon id="segB" class="seg" points="84,10 84,74 76,68 76,20" />
-          <polygon id="segC" class="seg" points="84,82 84,146 76,138 76,90" />
-          <polygon id="segD" class="seg" points="18,148 82,148 76,138 24,138" />
-          <polygon id="segE" class="seg" points="16,82 16,146 24,138 24,90" />
-          <polygon id="segF" class="seg" points="16,10 16,74 24,68 24,20" />
-          <polygon id="segG" class="seg" points="20,76 80,76 76,84 24,84 20,80" />
-          <circle id="segDP" class="seg" cx="92" cy="146" r="6" />
-        </svg>
-      </div>
-      <p class="display7-hint" id="display7Hint">Ativo durante o silenciamento</p>
-    </section>
+      <!-- 4. STATS -->
+      <section class="cell cell--stats">
+        <div class="cell__header">HISTÓRICO</div>
+        <div class="cell__body">
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-label">MIN</span>
+              <span class="stat-value" id="sensorMin">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">MED</span>
+              <span class="stat-value" id="sensorAvg">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">MAX</span>
+              <span class="stat-value" id="sensorMax">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <!-- ====== GRÁFICO DE HISTÓRICO ====== -->
-    <section class="card card--chart">
-      <h2 class="card__title">Histórico de Leituras</h2>
-      <div class="chart-container">
-        <canvas id="chartCanvas"></canvas>
-      </div>
-      <div class="chart-legend">
-        <span class="chart-legend__item chart-legend__item--green">Seguro (&gt;700)</span>
-        <span class="chart-legend__item chart-legend__item--yellow">Alerta (301-700)</span>
-        <span class="chart-legend__item chart-legend__item--red">Perigo (≤300)</span>
-      </div>
-    </section>
+      <!-- 5. LEDs VIRTUAIS -->
+      <section class="cell cell--leds">
+        <div class="cell__header">LEDs</div>
+        <div class="cell__body">
+          <div class="leds-grid">
+            <div class="led led--green" id="ledGreen1"></div>
+            <div class="led led--green" id="ledGreen2"></div>
+            <div class="led led--yellow" id="ledYellow1"></div>
+            <div class="led led--yellow" id="ledYellow2"></div>
+            <div class="led led--red" id="ledRed1"></div>
+            <div class="led led--red" id="ledRed2"></div>
+          </div>
+        </div>
+      </section>
 
-    <!-- ====== DIAGRAMA DE ESTADOS ====== -->
-    <section class="card card--states">
-      <h2 class="card__title">Diagrama de Estados</h2>
-      <div class="state-diagram">
-        <div class="state-node state-node--green" id="stateSeguro">
-          <span class="state-node__label">SEGURO</span>
-          <span class="state-node__sub">LEDs verdes</span>
+      <!-- 6. DISPLAY 7-SEGMENTOS -->
+      <section class="cell cell--display7">
+        <div class="cell__header">DISPLAY</div>
+        <div class="cell__body">
+          <div class="seven-seg" id="sevenSeg">
+            <svg viewBox="0 0 100 160" class="seven-seg__svg">
+              <polygon id="segA" class="seg" points="18,8 82,8 76,18 24,18" />
+              <polygon id="segB" class="seg" points="84,10 84,74 76,68 76,20" />
+              <polygon id="segC" class="seg" points="84,82 84,146 76,138 76,90" />
+              <polygon id="segD" class="seg" points="18,148 82,148 76,138 24,138" />
+              <polygon id="segE" class="seg" points="16,82 16,146 24,138 24,90" />
+              <polygon id="segF" class="seg" points="16,10 16,74 24,68 24,20" />
+              <polygon id="segG" class="seg" points="20,76 80,76 76,84 24,84 20,80" />
+              <circle id="segDP" class="seg" cx="92" cy="146" r="6" />
+            </svg>
+          </div>
+          <p class="display7-hint" id="display7Hint">—</p>
         </div>
-        <div class="state-arrow state-arrow--right">
-          <span>≤ 670</span>
-          <span class="arrow-icon">→</span>
-        </div>
-        <div class="state-node state-node--yellow" id="stateAlerta">
-          <span class="state-node__label">ALERTA</span>
-          <span class="state-node__sub">LEDs amarelos</span>
-        </div>
-        <div class="state-arrow state-arrow--right">
-          <span>≤ 270</span>
-          <span class="arrow-icon">→</span>
-        </div>
-        <div class="state-node state-node--red" id="statePerigo">
-          <span class="state-node__label">PERIGO</span>
-          <span class="state-node__sub">LEDs vermelhos + buzzer</span>
-        </div>
-        <div class="state-arrow state-arrow--down">
-          <span class="arrow-icon">↓</span>
-          <span>botão</span>
-        </div>
-        <div class="state-node state-node--muted" id="stateSilenciado">
-          <span class="state-node__label">SILENCIADO</span>
-          <span class="state-node__sub">Contagem regressiva</span>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ====== LOG SERIAL ====== -->
-    <section class="card card--log">
-      <h2 class="card__title">Monitor Serial (dados reais)</h2>
-      <div class="serial-log" id="serialLog">
-        <p class="log-line log-line--info">Aguardando conexão com o Arduino...</p>
-      </div>
-      <button class="btn btn--small" id="btnClearLog">Limpar log</button>
-    </section>
-  </main>
+      <!-- 7. LIMIAR DE ALERTA -->
+      <section class="cell cell--thresholds">
+        <div class="cell__header">LIMIAR</div>
+        <div class="cell__body">
+          <div class="threshold-item threshold--green">
+            <span class="threshold-label">SEGURO</span>
+            <span class="threshold-value">701-1023</span>
+          </div>
+          <div class="threshold-item threshold--yellow">
+            <span class="threshold-label">ALERTA</span>
+            <span class="threshold-value">301-700</span>
+          </div>
+          <div class="threshold-item threshold--red">
+            <span class="threshold-label">PERIGO</span>
+            <span class="threshold-value">0-300</span>
+          </div>
+        </div>
+      </section>
 
-  <!-- ====== FOOTER ====== -->
-  <footer class="footer">
-    <p>Projeto acadêmico — Internet das Coisas (IoT) &bull; Arduino UNO</p>
-    <p class="footer__team">Richardson &bull; Wallace &bull; Emanuele &bull; Vinícius</p>
-    <p class="footer__links">
-      <a href="index.html">Abrir versão de simulação</a>
-    </p>
-  </footer>
+      <!-- 8. GRÁFICO (full-width) -->
+      <section class="cell cell--chart">
+        <div class="cell__header">HISTÓRICO</div>
+        <div class="cell__body">
+          <div class="chart-container">
+            <canvas id="chartCanvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9. LOG SERIAL (full-width) -->
+      <section class="cell cell--log">
+        <div class="cell__header">MONITOR SERIAL</div>
+        <div class="cell__body">
+          <div class="serial-log" id="serialLog">
+            <p class="log-line log-line--info">[SYS] Aguardando conexão...</p>
+          </div>
+          <button class="btn btn--small" id="btnClearLog">LIMPAR</button>
+        </div>
+      </section>
+
+      <!-- 10. CONFIGURAÇÕES -->
+      <section class="cell cell--settings">
+        <div class="cell__header">OPÇÕES</div>
+        <div class="cell__body">
+          <div class="settings-group">
+            <label class="toggle-label">
+              <input type="checkbox" id="soundToggle" checked>
+              <span>Sons de Alerta</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="notifToggle" checked>
+              <span>Notificações</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="themeToggle">
+              <span>Tema Claro</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ====== FOOTER ====== -->
+    <footer class="footer">
+      <p>Projeto Acadêmico — IoT • Richardson • Wallace • Emanuele • Vinícius</p>
+    </footer>
+  </div>
 
   <script src="serial.js"></script>
 </body>
