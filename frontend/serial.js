@@ -1,20 +1,24 @@
 // =============================================================================
-// Alarme de Incêndio IoT — Dashboard com Web Serial API
-// Conecta ao Arduino real via porta serial USB (Chrome 89+ / Edge 89+)
+// Alarme de Incêndio IoT — Industrial/Cyber Dashboard
+// Com Web Serial API, localStorage, timestamps, sons e notificações
 // =============================================================================
 
 (() => {
   "use strict";
 
-  // ---------- Constantes (espelho do codigo.ino) -----------------------------
+  // ---------- CONSTANTES -------------------------------------------------------
   const LIMIAR_SEGURO = 700;
   const LIMIAR_ALERTA = 300;
   const MAX_HISTORICO = 200;
+  
+  const ESTADO = { 
+    SEGURO: "SEGURO", 
+    ALERTA: "ALERTA", 
+    PERIGO: "PERIGO", 
+    SILENCIADO: "SILENCIADO" 
+  };
 
-  // ---------- Estados --------------------------------------------------------
-  const ESTADO = { SEGURO: "SEGURO", ALERTA: "ALERTA", PERIGO: "PERIGO", SILENCIADO: "SILENCIADO" };
-
-  // ---------- Tabela de segmentos (igual ao .ino) ----------------------------
+  // Tabela 7 segmentos
   const DIGITOS = [
     [1, 1, 1, 1, 1, 1, 0],
     [0, 1, 1, 0, 0, 0, 0],
@@ -29,75 +33,204 @@
   ];
   const SEG_IDS = ["segA", "segB", "segC", "segD", "segE", "segF", "segG"];
 
-  // ---------- DOM refs -------------------------------------------------------
+  // ---------- DOM REFS ---------------------------------------------------------
   const $ = (id) => document.getElementById(id);
 
-  const statusBadge   = $("statusBadge");
-  const statusIcon    = $("statusIcon");
-  const statusLabel   = $("statusLabel");
-  const statusDesc    = $("statusDesc");
+  // Status
+  const statusCell = $("statusCell");
+  const statusIcon = $("statusIcon");
+  const statusText = $("statusText");
+  const statusDesc = $("statusDesc");
 
-  const ledGreen1  = $("ledGreen1");
-  const ledGreen2  = $("ledGreen2");
-  const ledYellow1 = $("ledYellow1");
-  const ledYellow2 = $("ledYellow2");
-  const ledRed1    = $("ledRed1");
-  const ledRed2    = $("ledRed2");
-
-  const gaugeCanvas = $("gaugeCanvas");
-  const gaugeCtx    = gaugeCanvas.getContext("2d");
-  const gaugeValue  = $("gaugeValue");
-  const sensorMin   = $("sensorMin");
-  const sensorMax   = $("sensorMax");
-  const sensorAvg   = $("sensorAvg");
-
-  const chartCanvas = $("chartCanvas");
-  const ctx         = chartCanvas.getContext("2d");
-
-  const serialLog    = $("serialLog");
-  const btnConnect   = $("btnConnect");
-  const btnClearLog  = $("btnClearLog");
-  const baudRate     = $("baudRate");
-  const serialDot    = $("serialDot");
+  // Serial
+  const btnConnect = $("btnConnect");
+  const btnExport = $("btnExport");
+  const baudRate = $("baudRate");
+  const serialDot = $("serialDot");
   const serialStatusText = $("serialStatusText");
-  const display7Hint = $("display7Hint");
+  const serialStatus = $("serialStatus");
 
-  const stateNodes = {
-    SEGURO:     $("stateSeguro"),
-    ALERTA:     $("stateAlerta"),
-    PERIGO:     $("statePerigo"),
-    SILENCIADO: $("stateSilenciado"),
+  // Gauge
+  const gaugeCanvas = $("gaugeCanvas");
+  const gaugeCtx = gaugeCanvas.getContext("2d");
+  const gaugeValue = $("gaugeValue");
+
+  // Stats
+  const sensorMin = $("sensorMin");
+  const sensorMax = $("sensorMax");
+  const sensorAvg = $("sensorAvg");
+
+  // LEDs
+  const leds = {
+    green1: $("ledGreen1"),
+    green2: $("ledGreen2"),
+    yellow1: $("ledYellow1"),
+    yellow2: $("ledYellow2"),
+    red1: $("ledRed1"),
+    red2: $("ledRed2"),
   };
 
-  // ---------- Estado ---------------------------------------------------------
+  // Display 7-seg
+  const display7Hint = $("display7Hint");
+
+  // Gráfico
+  const chartCanvas = $("chartCanvas");
+  const ctx = chartCanvas.getContext("2d");
+
+  // Log
+  const serialLog = $("serialLog");
+  const btnClearLog = $("btnClearLog");
+
+  // Settings
+  const soundToggle = $("soundToggle");
+  const notifToggle = $("notifToggle");
+  const themeToggle = $("themeToggle");
+
+  // State bar
+  const stateBarNodes = {
+    SEGURO: $("stateBarSeguro"),
+    ALERTA: $("stateBarAlerta"),
+    PERIGO: $("stateBarPerigo"),
+    SILENCIADO: $("stateBarSilenciado"),
+  };
+
+  // Clock
+  const headerClock = $("headerClock");
+
+  // ---------- ESTADO GLOBAL ---------------------------------------------------
   let estadoAtual = null;
   let nivelSensor = 0;
-  let historico   = [];
-  let statsMin    = Infinity;
-  let statsMax    = -Infinity;
-  let statsSum    = 0;
-  let statsCount  = 0;
+  let historico = [];
+  let statsMin = Infinity;
+  let statsMax = -Infinity;
+  let statsSum = 0;
+  let statsCount = 0;
 
-  // ---------- Contagem regressiva (simulada no JS) ---------------------------
   let contagemTimer = null;
   let contagemAtual = -1;
 
+  // ---------- WEB SERIAL -------------------------------------------------------
+  let port = null;
+  let reader = null;
+  let readableStreamClosed = null;
+  let buffer = "";
+
+  // ---------- STORAGE & SETTINGS -----------------------------------------------
+  const STORAGE_KEY = "iot_dashboard_settings";
+  const LOG_STORAGE_KEY = "iot_dashboard_log";
+
+  function loadSettings() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const settings = JSON.parse(saved);
+      soundToggle.checked = settings.sound !== false;
+      notifToggle.checked = settings.notif !== false;
+      themeToggle.checked = settings.theme === "light";
+      if (settings.theme === "light") {
+        document.body.classList.add("light-theme");
+      }
+    }
+  }
+
+  function saveSettings() {
+    const settings = {
+      sound: soundToggle.checked,
+      notif: notifToggle.checked,
+      theme: themeToggle.checked ? "light" : "dark",
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  }
+
+  function saveLogToStorage() {
+    const logContent = Array.from(serialLog.children)
+      .map(el => el.textContent)
+      .join("\n");
+    localStorage.setItem(LOG_STORAGE_KEY, logContent);
+  }
+
+  // ---------- RELÓGIO ---------------------------------------------------------
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, "0");
+    const m = String(now.getMinutes()).padStart(2, "0");
+    const s = String(now.getSeconds()).padStart(2, "0");
+    headerClock.textContent = `${h}:${m}:${s}`;
+  }
+
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ---------- SONS & NOTIFICAÇÕES -----------------------------------------------
+  function playSound(type) {
+    if (!soundToggle.checked) return;
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+
+    if (type === "beep_short") {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (type === "beep_alarm") {
+      for (let i = 0; i < 3; i++) {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.setValueAtTime(1000, now + i * 0.3);
+        osc.frequency.setValueAtTime(1200, now + i * 0.3 + 0.1);
+        gain.gain.setValueAtTime(0.3, now + i * 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.3 + 0.2);
+        osc.start(now + i * 0.3);
+        osc.stop(now + i * 0.3 + 0.2);
+      }
+    } else if (type === "beep_warning") {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.setValueAtTime(800, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+  }
+
+  function showNotification(title, options = {}) {
+    if (!notifToggle.checked) return;
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, {
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23ff0033'/><text x='50' y='60' font-size='60' fill='white' text-anchor='middle'>!</text></svg>",
+        ...options,
+      });
+    }
+  }
+
+  // ---------- CONTAGEM REGRESSIVA -----------------------------------------------
   function iniciarContagem(segundos) {
     pararContagem();
-    contagemAtual = segundos - 1; // Arduino começa em CONTAGEM_REGRESSIVA - 1
+    contagemAtual = segundos - 1;
     mostrarNumero(contagemAtual);
-    display7Hint.textContent = `Contagem: ${contagemAtual}s`;
+    display7Hint.textContent = `${contagemAtual}s`;
 
     contagemTimer = setInterval(() => {
       contagemAtual--;
       if (contagemAtual < 0) {
         pararContagem();
         desligarDisplay();
-        display7Hint.textContent = "Ativo durante o silenciamento";
+        display7Hint.textContent = "—";
         return;
       }
       mostrarNumero(contagemAtual);
-      display7Hint.textContent = `Contagem: ${contagemAtual}s`;
+      display7Hint.textContent = `${contagemAtual}s`;
     }, 1000);
   }
 
@@ -109,15 +242,10 @@
     contagemAtual = -1;
   }
 
-  // ---------- Web Serial -----------------------------------------------------
-  let port   = null;
-  let reader = null;
-  let readableStreamClosed = null;
-  let buffer = "";
-
+  // ---------- WEB SERIAL CONNECTION -------------------------------------------
   async function conectar() {
     if (!("serial" in navigator)) {
-      logSerial("Erro: Web Serial API não suportada neste navegador. Use Chrome 89+ ou Edge 89+.", "danger");
+      logSerial("Erro: Web Serial API não suportada.", "danger");
       return;
     }
 
@@ -126,22 +254,19 @@
       const baud = parseInt(baudRate.value, 10);
       await port.open({ baudRate: baud });
 
-      serialDot.classList.remove("serial-status__dot--off");
-      serialDot.classList.add("serial-status__dot--on");
-      serialStatusText.textContent = `Conectado (${baud} baud)`;
-      btnConnect.textContent = "🔌 Desconectar";
-      btnConnect.classList.remove("btn--muted");
-      btnConnect.classList.add("btn--red");
+      serialDot.style.background = "var(--green)";
+      serialStatusText.textContent = `CONECTADO (${baud})`;
+      serialStatus.classList.add("connected");
+      btnConnect.textContent = "DESCONECTAR";
 
-      logSerial(`Conectado à porta serial (${baud} baud)`, "info");
-      logSerial("Recebendo dados do Arduino...", "info");
+      logSerial(`[SYS] Conectado (${baud} baud)`, "info");
+      playSound("beep_short");
 
       lerDados();
     } catch (err) {
-      if (err.name === "NotFoundError") {
-        logSerial("Nenhuma porta selecionada.", "warn");
-      } else {
-        logSerial(`Erro ao conectar: ${err.message}`, "danger");
+      if (err.name !== "NotFoundError") {
+        logSerial(`[ERR] ${err.message}`, "danger");
+        playSound("beep_warning");
       }
     }
   }
@@ -165,14 +290,12 @@
       }
     } catch (_) {}
 
-    serialDot.classList.remove("serial-status__dot--on");
-    serialDot.classList.add("serial-status__dot--off");
-    serialStatusText.textContent = "Desconectado";
-    btnConnect.textContent = "🔌 Conectar ao Arduino";
-    btnConnect.classList.remove("btn--red");
-    btnConnect.classList.add("btn--muted");
+    serialDot.style.background = "var(--red)";
+    serialStatusText.textContent = "DESCONECTADO";
+    serialStatus.classList.remove("connected");
+    btnConnect.textContent = "CONECTAR";
 
-    logSerial("Desconectado.", "info");
+    logSerial("[SYS] Desconectado", "info");
   }
 
   async function lerDados() {
@@ -192,10 +315,9 @@
       }
     } catch (err) {
       if (err.name !== "TypeError") {
-        logSerial(`Erro de leitura: ${err.message}`, "danger");
+        logSerial(`[ERR] ${err.message}`, "danger");
       }
     }
-    // Cleanup é feito em desconectar() para evitar race conditions
   }
 
   function processarBuffer() {
@@ -205,18 +327,13 @@
     linhas.forEach((linha) => {
       linha = linha.trim();
       if (!linha) return;
-
       logSerial(linha, classificarLinha(linha));
       parsearLinha(linha);
     });
   }
 
-  // ---------- Parser da saída serial do Arduino ------------------------------
-  // Formato esperado: "Sensor: 850 | Estado: SEGURO (verde)"
-  // Também aceita: "Alarme silenciado - reiniciando em 10s"
-
+  // ---------- PARSER SERIAL ---------------------------------------------------
   function parsearLinha(linha) {
-    // Padrão principal: "Sensor: XXX | Estado: YYY"
     const matchSensor = linha.match(/Sensor:\s*(\d+)/i);
     const matchEstado = linha.match(/Estado:\s*(\w+)/i);
 
@@ -224,7 +341,6 @@
       nivelSensor = parseInt(matchSensor[1], 10);
       updateGauge(nivelSensor);
       updateStats(nivelSensor);
-
       historico.push(nivelSensor);
       if (historico.length > MAX_HISTORICO) historico.shift();
       drawChart();
@@ -235,32 +351,44 @@
       if (ESTADO[novoEstado] && novoEstado !== estadoAtual) {
         estadoAtual = novoEstado;
         updateStatusUI(estadoAtual);
-        updateStateDiagram(estadoAtual);
+        updateStateBar(estadoAtual);
+
+        // Emitir sons de alerta
+        if (novoEstado === ESTADO.PERIGO) {
+          playSound("beep_alarm");
+          showNotification("🔥 PERIGO!", {
+            body: "Chama intensa detectada! Alarme ativo.",
+            tag: "fire-alert",
+          });
+        } else if (novoEstado === ESTADO.ALERTA) {
+          playSound("beep_warning");
+          showNotification("⚠️ ALERTA", {
+            body: "Chama detectada nas proximidades.",
+            tag: "fire-alert",
+          });
+        }
       }
     }
 
-    // Silenciamento
     if (/silenciado/i.test(linha)) {
       estadoAtual = ESTADO.SILENCIADO;
       updateStatusUI(ESTADO.SILENCIADO);
-      updateStateDiagram(ESTADO.SILENCIADO);
+      updateStateBar(ESTADO.SILENCIADO);
     }
 
-    // Contagem regressiva — simula localmente com timer
     const matchContagem = linha.match(/reiniciando em (\d+)s/i);
     if (matchContagem) {
       const segundos = parseInt(matchContagem[1], 10);
       iniciarContagem(segundos);
     }
 
-    // Monitoramento retomado
     if (/retomado/i.test(linha)) {
       pararContagem();
       desligarDisplay();
-      display7Hint.textContent = "Ativo durante o silenciamento";
+      display7Hint.textContent = "—";
       estadoAtual = ESTADO.SEGURO;
       updateStatusUI(ESTADO.SEGURO);
-      updateStateDiagram(ESTADO.SEGURO);
+      updateStateBar(ESTADO.SEGURO);
     }
   }
 
@@ -268,71 +396,71 @@
     if (/SEGURO|verde/i.test(linha)) return "safe";
     if (/ALERTA|amarelo/i.test(linha)) return "warn";
     if (/PERIGO|vermelho|buzzer/i.test(linha)) return "danger";
-    if (/silenciado|retomado|===|Limiares|pronto/i.test(linha)) return "info";
+    if (/silenciado|retomado|===|pronto/i.test(linha)) return "info";
     return "";
   }
 
-  // ---------- UI updates -----------------------------------------------------
+  // ---------- UI UPDATES -------------------------------------------------------
+  function getTimestamp() {
+    const now = new Date();
+    return `[${now.toLocaleTimeString()}]`;
+  }
+
   function setLEDs(green, yellow, red) {
-    ledGreen1.classList.toggle("led--on", green);
-    ledGreen2.classList.toggle("led--on", green);
-    ledYellow1.classList.toggle("led--on", yellow);
-    ledYellow2.classList.toggle("led--on", yellow);
-    ledRed1.classList.toggle("led--on", red);
-    ledRed2.classList.toggle("led--on", red);
+    leds.green1.classList.toggle("led--on", green);
+    leds.green2.classList.toggle("led--on", green);
+    leds.yellow1.classList.toggle("led--on", yellow);
+    leds.yellow2.classList.toggle("led--on", yellow);
+    leds.red1.classList.toggle("led--on", red);
+    leds.red2.classList.toggle("led--on", red);
   }
 
   function updateStatusUI(estado) {
-    statusBadge.className = "status-badge";
+    statusCell.className = "cell cell--status";
+
     switch (estado) {
       case ESTADO.SEGURO:
-        statusBadge.classList.add("status-badge--seguro");
-        statusIcon.textContent = "\u2714";
-        statusLabel.textContent = "SEGURO";
-        statusDesc.textContent = "Nenhuma chama detectada. Ambiente seguro.";
+        statusCell.classList.add("status--seguro");
+        statusIcon.textContent = "✔";
+        statusText.textContent = "SEGURO";
+        statusDesc.textContent = "Nenhuma chama detectada";
         setLEDs(true, false, false);
         break;
       case ESTADO.ALERTA:
-        statusBadge.classList.add("status-badge--alerta");
-        statusIcon.textContent = "\u26A0";
-        statusLabel.textContent = "ALERTA";
-        statusDesc.textContent = "Chama detectada nas proximidades. Atenção!";
+        statusCell.classList.add("status--alerta");
+        statusIcon.textContent = "⚠";
+        statusText.textContent = "ALERTA";
+        statusDesc.textContent = "Chama detectada";
         setLEDs(false, true, false);
         break;
       case ESTADO.PERIGO:
-        statusBadge.classList.add("status-badge--perigo");
-        statusIcon.textContent = "\uD83D\uDD25";
-        statusLabel.textContent = "PERIGO";
-        statusDesc.textContent = "Perigo crítico! Chama intensa detectada. Buzzer ativo.";
+        statusCell.classList.add("status--perigo");
+        statusIcon.textContent = "🔥";
+        statusText.textContent = "PERIGO";
+        statusDesc.textContent = "Perigo crítico!";
         setLEDs(false, false, true);
         break;
       case ESTADO.SILENCIADO:
-        statusBadge.classList.add("status-badge--silenciado");
-        statusIcon.textContent = "\uD83D\uDD07";
-        statusLabel.textContent = "SILENCIADO";
-        statusDesc.textContent = "Alarme silenciado pelo botão físico.";
+        statusCell.classList.add("status--silenciado");
+        statusIcon.textContent = "◈";
+        statusText.textContent = "SILENCIADO";
+        statusDesc.textContent = "Alarme silenciado";
         setLEDs(false, false, false);
         break;
     }
   }
 
-  function updateStateDiagram(estado) {
-    Object.entries(stateNodes).forEach(([key, node]) => {
-      node.classList.toggle("state-node--active", key === estado);
+  function updateStateBar(estado) {
+    Object.entries(stateBarNodes).forEach(([key, node]) => {
+      node.classList.toggle("active", key === estado);
     });
   }
 
-  // ---------- Gauge (Canvas) -------------------------------------------------
+  // ---------- GAUGE --------------------------------------------------
   const GAUGE_START_ANGLE = Math.PI * 0.8;
-  const GAUGE_END_ANGLE   = Math.PI * 2.2;
-  const GAUGE_RANGE       = GAUGE_END_ANGLE - GAUGE_START_ANGLE;
-  const GAUGE_MAX         = 1023;
-
-  const GAUGE_ZONES = [
-    { from: 0,             to: LIMIAR_ALERTA, color: "#ef4444" },
-    { from: LIMIAR_ALERTA, to: LIMIAR_SEGURO, color: "#eab308" },
-    { from: LIMIAR_SEGURO, to: GAUGE_MAX,     color: "#22c55e" },
-  ];
+  const GAUGE_END_ANGLE = Math.PI * 2.2;
+  const GAUGE_RANGE = GAUGE_END_ANGLE - GAUGE_START_ANGLE;
+  const GAUGE_MAX = 1023;
 
   let needleAngle = GAUGE_START_ANGLE;
 
@@ -342,16 +470,16 @@
 
   function drawGauge(value) {
     const dpr = window.devicePixelRatio || 1;
-    const cssW = 340;
-    const cssH = 220;
-    gaugeCanvas.width  = cssW * dpr;
+    const cssW = 240;
+    const cssH = 160;
+    gaugeCanvas.width = cssW * dpr;
     gaugeCanvas.height = cssH * dpr;
     gaugeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const cx = cssW / 2;
-    const cy = cssH - 38;
-    const outerR = 130;
-    const innerR = 100;
+    const cy = cssH - 25;
+    const outerR = 90;
+    const innerR = 70;
 
     gaugeCtx.clearRect(0, 0, cssW, cssH);
 
@@ -360,25 +488,31 @@
     gaugeCtx.arc(cx, cy, outerR, GAUGE_START_ANGLE, GAUGE_END_ANGLE);
     gaugeCtx.arc(cx, cy, innerR, GAUGE_END_ANGLE, GAUGE_START_ANGLE, true);
     gaugeCtx.closePath();
-    gaugeCtx.fillStyle = "#1e2130";
+    gaugeCtx.fillStyle = "#1a1f35";
     gaugeCtx.fill();
 
-    // Color zones
-    GAUGE_ZONES.forEach((z) => {
+    // Zonas coloridas
+    const zones = [
+      { from: 0, to: LIMIAR_ALERTA, color: "#ff0033" },
+      { from: LIMIAR_ALERTA, to: LIMIAR_SEGURO, color: "#ffff00" },
+      { from: LIMIAR_SEGURO, to: GAUGE_MAX, color: "#00ff41" },
+    ];
+
+    zones.forEach((z) => {
       const a1 = valToAngle(z.from);
       const a2 = valToAngle(z.to);
       gaugeCtx.beginPath();
       gaugeCtx.arc(cx, cy, outerR, a1, a2);
       gaugeCtx.arc(cx, cy, innerR, a2, a1, true);
       gaugeCtx.closePath();
-      gaugeCtx.fillStyle = z.color + "55";
+      gaugeCtx.fillStyle = z.color + "44";
       gaugeCtx.fill();
     });
 
-    // Active zone
-    let activeColor = "#22c55e";
-    if (value <= LIMIAR_ALERTA) activeColor = "#ef4444";
-    else if (value <= LIMIAR_SEGURO) activeColor = "#eab308";
+    // Zona ativa
+    let activeColor = "#00ff41";
+    if (value <= LIMIAR_ALERTA) activeColor = "#ff0033";
+    else if (value <= LIMIAR_SEGURO) activeColor = "#ffff00";
 
     const activeEnd = valToAngle(value);
     gaugeCtx.beginPath();
@@ -388,97 +522,55 @@
     gaugeCtx.fillStyle = activeColor + "aa";
     gaugeCtx.fill();
 
-    // Glow
-    gaugeCtx.save();
-    gaugeCtx.shadowColor = activeColor;
-    gaugeCtx.shadowBlur = 12;
-    gaugeCtx.beginPath();
-    gaugeCtx.arc(cx, cy, outerR - 1, GAUGE_START_ANGLE, activeEnd);
-    gaugeCtx.strokeStyle = activeColor;
-    gaugeCtx.lineWidth = 2;
-    gaugeCtx.stroke();
-    gaugeCtx.restore();
-
-    // Major ticks + labels
-    gaugeCtx.font = "bold 11px sans-serif";
+    // Ticks
+    gaugeCtx.font = "bold 9px monospace";
     gaugeCtx.textAlign = "center";
     gaugeCtx.textBaseline = "middle";
+    gaugeCtx.fillStyle = "#6b7595";
 
-    for (let v = 0; v <= GAUGE_MAX; v += 100) {
+    for (let v = 0; v <= GAUGE_MAX; v += 200) {
       const a = valToAngle(v);
       const cosA = Math.cos(a);
       const sinA = Math.sin(a);
 
       gaugeCtx.beginPath();
       gaugeCtx.moveTo(cx + innerR * cosA, cy + innerR * sinA);
-      gaugeCtx.lineTo(cx + (innerR - 10) * cosA, cy + (innerR - 10) * sinA);
+      gaugeCtx.lineTo(cx + (innerR - 8) * cosA, cy + (innerR - 8) * sinA);
       gaugeCtx.strokeStyle = "#8b90a0";
-      gaugeCtx.lineWidth = 2;
+      gaugeCtx.lineWidth = 1.5;
       gaugeCtx.stroke();
 
-      const labelR = innerR - 22;
-      gaugeCtx.fillStyle = "#8b90a0";
+      const labelR = innerR - 18;
       gaugeCtx.fillText(String(v), cx + labelR * cosA, cy + labelR * sinA);
     }
 
-    // Minor ticks
-    for (let v = 0; v <= GAUGE_MAX; v += 50) {
-      if (v % 100 === 0) continue;
-      const a = valToAngle(v);
-      const cosA = Math.cos(a);
-      const sinA = Math.sin(a);
-      gaugeCtx.beginPath();
-      gaugeCtx.moveTo(cx + innerR * cosA, cy + innerR * sinA);
-      gaugeCtx.lineTo(cx + (innerR - 5) * cosA, cy + (innerR - 5) * sinA);
-      gaugeCtx.strokeStyle = "#555a6e";
-      gaugeCtx.lineWidth = 1;
-      gaugeCtx.stroke();
-    }
-
-    // Threshold markers
-    [LIMIAR_ALERTA, LIMIAR_SEGURO].forEach((threshold) => {
-      const a = valToAngle(threshold);
-      const cosA = Math.cos(a);
-      const sinA = Math.sin(a);
-      gaugeCtx.beginPath();
-      gaugeCtx.moveTo(cx + (innerR + 2) * cosA, cy + (innerR + 2) * sinA);
-      gaugeCtx.lineTo(cx + (outerR - 2) * cosA, cy + (outerR - 2) * sinA);
-      gaugeCtx.strokeStyle = "#ffffff44";
-      gaugeCtx.lineWidth = 2;
-      gaugeCtx.stroke();
-    });
-
-    // Needle
+    // Agulha
     const targetAngle = valToAngle(value);
     needleAngle += (targetAngle - needleAngle) * 0.15;
 
-    const needleLen = outerR + 4;
-    const needleBaseW = 4;
+    const needleLen = outerR + 2;
+    const needleBaseW = 3;
     const nCos = Math.cos(needleAngle);
     const nSin = Math.sin(needleAngle);
     const perpCos = Math.cos(needleAngle + Math.PI / 2);
     const perpSin = Math.sin(needleAngle + Math.PI / 2);
 
-    gaugeCtx.save();
-    gaugeCtx.shadowColor = "rgba(0,0,0,.5)";
-    gaugeCtx.shadowBlur = 6;
     gaugeCtx.beginPath();
     gaugeCtx.moveTo(cx + needleLen * nCos, cy + needleLen * nSin);
     gaugeCtx.lineTo(cx + needleBaseW * perpCos, cy + needleBaseW * perpSin);
-    gaugeCtx.lineTo(cx - 10 * nCos, cy - 10 * nSin);
+    gaugeCtx.lineTo(cx - 8 * nCos, cy - 8 * nSin);
     gaugeCtx.lineTo(cx - needleBaseW * perpCos, cy - needleBaseW * perpSin);
     gaugeCtx.closePath();
-    gaugeCtx.fillStyle = "#e4e6ed";
+    gaugeCtx.fillStyle = "#e4f0ff";
     gaugeCtx.fill();
-    gaugeCtx.restore();
 
-    // Center cap
+    // Centro
     gaugeCtx.beginPath();
-    gaugeCtx.arc(cx, cy, 8, 0, Math.PI * 2);
+    gaugeCtx.arc(cx, cy, 6, 0, Math.PI * 2);
     gaugeCtx.fillStyle = "#3d4260";
     gaugeCtx.fill();
     gaugeCtx.beginPath();
-    gaugeCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+    gaugeCtx.arc(cx, cy, 3, 0, Math.PI * 2);
     gaugeCtx.fillStyle = activeColor;
     gaugeCtx.fill();
 
@@ -489,19 +581,19 @@
     drawGauge(value);
   }
 
-  // ---------- Stats ----------------------------------------------------------
+  // ---------- STATS -----------------------------------------------------------
   function updateStats(value) {
     statsCount++;
     statsSum += value;
     if (value < statsMin) statsMin = value;
     if (value > statsMax) statsMax = value;
 
-    sensorMin.textContent = statsMin;
-    sensorMax.textContent = statsMax;
-    sensorAvg.textContent = Math.round(statsSum / statsCount);
+    sensorMin.textContent = statsMin === Infinity ? "—" : statsMin;
+    sensorMax.textContent = statsMax === -Infinity ? "—" : statsMax;
+    sensorAvg.textContent = statsCount > 0 ? Math.round(statsSum / statsCount) : "—";
   }
 
-  // ---------- Chart ----------------------------------------------------------
+  // ---------- CHART -----------------------------------------------------------
   function resizeCanvas() {
     const container = chartCanvas.parentElement;
     chartCanvas.width = container.clientWidth;
@@ -520,23 +612,24 @@
 
     const yForVal = (v) => padding.top + plotH * (1 - v / 1023);
 
-    ctx.fillStyle = "rgba(34,197,94,.08)";
+    // Zonas de cor
+    ctx.fillStyle = "rgba(0, 255, 65, 0.08)";
     ctx.fillRect(padding.left, yForVal(1023), plotW, yForVal(LIMIAR_SEGURO) - yForVal(1023));
-    ctx.fillStyle = "rgba(234,179,8,.08)";
+    ctx.fillStyle = "rgba(255, 255, 0, 0.08)";
     ctx.fillRect(padding.left, yForVal(LIMIAR_SEGURO), plotW, yForVal(LIMIAR_ALERTA) - yForVal(LIMIAR_SEGURO));
-    ctx.fillStyle = "rgba(239,68,68,.08)";
+    ctx.fillStyle = "rgba(255, 0, 51, 0.08)";
     ctx.fillRect(padding.left, yForVal(LIMIAR_ALERTA), plotW, yForVal(0) - yForVal(LIMIAR_ALERTA));
 
+    // Linhas de limiar
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
-
-    ctx.strokeStyle = "rgba(34,197,94,.4)";
+    ctx.strokeStyle = "rgba(0, 255, 65, 0.4)";
     ctx.beginPath();
     ctx.moveTo(padding.left, yForVal(LIMIAR_SEGURO));
     ctx.lineTo(w - padding.right, yForVal(LIMIAR_SEGURO));
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(239,68,68,.4)";
+    ctx.strokeStyle = "rgba(255, 0, 51, 0.4)";
     ctx.beginPath();
     ctx.moveTo(padding.left, yForVal(LIMIAR_ALERTA));
     ctx.lineTo(w - padding.right, yForVal(LIMIAR_ALERTA));
@@ -544,14 +637,16 @@
 
     ctx.setLineDash([]);
 
-    ctx.font = "11px sans-serif";
-    ctx.fillStyle = "rgba(34,197,94,.6)";
+    // Labels
+    ctx.font = "10px monospace";
+    ctx.fillStyle = "rgba(0, 255, 65, 0.6)";
     ctx.fillText("700", 4, yForVal(LIMIAR_SEGURO) + 4);
-    ctx.fillStyle = "rgba(239,68,68,.6)";
+    ctx.fillStyle = "rgba(255, 0, 51, 0.6)";
     ctx.fillText("300", 4, yForVal(LIMIAR_ALERTA) + 4);
 
     if (historico.length < 2) return;
 
+    // Linha do gráfico
     ctx.lineWidth = 2;
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -563,34 +658,32 @@
     });
 
     const gradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
-    gradient.addColorStop(0, "#22c55e");
-    gradient.addColorStop(0.5, "#eab308");
-    gradient.addColorStop(1, "#ef4444");
+    gradient.addColorStop(0, "#00ff41");
+    gradient.addColorStop(0.5, "#ffff00");
+    gradient.addColorStop(1, "#ff0033");
     ctx.strokeStyle = gradient;
     ctx.stroke();
 
+    // Preenchimento
     const lastX = padding.left + ((historico.length - 1) / (MAX_HISTORICO - 1)) * plotW;
     ctx.lineTo(lastX, h - padding.bottom);
     ctx.lineTo(padding.left, h - padding.bottom);
     ctx.closePath();
 
     const fillGradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
-    fillGradient.addColorStop(0, "rgba(34,197,94,.12)");
-    fillGradient.addColorStop(0.5, "rgba(234,179,8,.12)");
-    fillGradient.addColorStop(1, "rgba(239,68,68,.12)");
+    fillGradient.addColorStop(0, "rgba(0, 255, 65, 0.12)");
+    fillGradient.addColorStop(0.5, "rgba(255, 255, 0, 0.12)");
+    fillGradient.addColorStop(1, "rgba(255, 0, 51, 0.12)");
     ctx.fillStyle = fillGradient;
     ctx.fill();
-
-    ctx.fillStyle = "rgba(139,144,160,.5)";
-    ctx.font = "10px sans-serif";
-    const totalSec = Math.round((historico.length * 150) / 1000);
-    ctx.fillText(`-${totalSec}s`, padding.left, h - 4);
-    ctx.fillText("agora", lastX - 20, h - 4);
   }
 
-  // ---------- Display 7 segmentos -------------------------------------------
+  // ---------- DISPLAY 7 SEGMENTOS -----------------------------------------------
   function mostrarNumero(num) {
-    if (num < 0 || num > 9) { desligarDisplay(); return; }
+    if (num < 0 || num > 9) {
+      desligarDisplay();
+      return;
+    }
     const segs = DIGITOS[num];
     SEG_IDS.forEach((id, i) => $(id).classList.toggle("seg--on", segs[i] === 1));
     $("segDP").classList.remove("seg--on");
@@ -601,40 +694,113 @@
     $("segDP").classList.remove("seg--on");
   }
 
-  // ---------- Serial log -----------------------------------------------------
+  // ---------- LOG SERIAL -------------------------------------------------------
   function logSerial(msg, type) {
     const p = document.createElement("p");
     p.className = "log-line";
+
+    // Adicionar timestamp
+    const timestamp = getTimestamp();
+    const fullMsg = `${timestamp} ${msg}`;
+
     if (type) p.classList.add(`log-line--${type}`);
-    p.textContent = msg;
+    p.textContent = fullMsg;
     serialLog.appendChild(p);
     serialLog.scrollTop = serialLog.scrollHeight;
+
+    // Limitar a 200 linhas
     while (serialLog.children.length > 200) {
       serialLog.removeChild(serialLog.firstChild);
     }
+
+    // Salvar no localStorage a cada log
+    saveLogToStorage();
   }
 
-  // ---------- Eventos --------------------------------------------------------
+  // ---------- EXPORTAR DADOS ---------------------------------------------------
+  function exportData() {
+    const data = {
+      timestamp: new Date().toISOString(),
+      estado: estadoAtual,
+      nivelAtual: nivelSensor,
+      stats: {
+        minimo: statsMin,
+        maximo: statsMax,
+        media: Math.round(statsSum / statsCount),
+        total: statsCount,
+      },
+      historico: historico,
+      log: Array.from(serialLog.children).map(el => el.textContent).join("\n"),
+    };
+
+    const csv = `Timestamp,Valor Sensor,Estado\n${historico.map((val, i) => `${i},${val},${estadoAtual}`).join("\n")}`;
+    const jsonStr = JSON.stringify(data, null, 2);
+
+    // Download JSON
+    const jsonBlob = new Blob([jsonStr], { type: "application/json" });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    const jsonLink = document.createElement("a");
+    jsonLink.href = jsonUrl;
+    jsonLink.download = `iot_data_${Date.now()}.json`;
+    jsonLink.click();
+    URL.revokeObjectURL(jsonUrl);
+
+    // Download CSV
+    const csvBlob = new Blob([csv], { type: "text/csv" });
+    const csvUrl = URL.createObjectURL(csvBlob);
+    const csvLink = document.createElement("a");
+    csvLink.href = csvUrl;
+    csvLink.download = `iot_data_${Date.now()}.csv`;
+    csvLink.click();
+    URL.revokeObjectURL(csvUrl);
+
+    logSerial("[SYS] Dados exportados (JSON e CSV)", "info");
+    playSound("beep_short");
+  }
+
+  // ---------- EVENTOS -------------------------------------------------------
   btnConnect.addEventListener("click", () => {
     if (port) desconectar();
     else conectar();
   });
 
+  btnExport.addEventListener("click", exportData);
+
   btnClearLog.addEventListener("click", () => {
     serialLog.innerHTML = "";
-    logSerial("Log limpo.", "info");
+    logSerial("[SYS] Log limpo", "info");
   });
+
+  themeToggle.addEventListener("change", () => {
+    document.body.classList.toggle("light-theme");
+    saveSettings();
+  });
+
+  soundToggle.addEventListener("change", saveSettings);
+  notifToggle.addEventListener("change", saveSettings);
 
   window.addEventListener("resize", drawChart);
 
-  // ---------- Verificação de suporte -----------------------------------------
+  // ---------- INICIALIZAÇÃO ---------------------------------------------------
   if (!("serial" in navigator)) {
     btnConnect.disabled = true;
-    btnConnect.textContent = "Navegador não suportado";
-    logSerial("Web Serial API não disponível. Use Google Chrome 89+ ou Microsoft Edge 89+.", "danger");
+    btnConnect.textContent = "NÃO SUPORTADO";
+    logSerial("[ERR] Web Serial API não disponível (Chrome 89+ / Edge 89+)", "danger");
   }
 
-  // Gauge inicial (zerado)
+  // Pedir permissão para notificações
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
+  // Carregar settings
+  loadSettings();
+
+  // Desenho inicial
   drawGauge(0);
   desligarDisplay();
+  updateStatusUI(ESTADO.SEGURO);
+  updateStateBar(ESTADO.SEGURO);
+
+  logSerial("[SYS] Sistema pronto", "info");
 })();
