@@ -3,208 +3,183 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ALARME IOT — SIMULADOR</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <title>FireGuard IoT — Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <!-- ====== HEADER / SISTEMA ====== -->
-    <header class="header">
-      <div class="header__top">
-        <div class="header__branding">
-          <h1>◆ ALARME INCÊNDIO IOT</h1>
-          <span class="header__subtitle">Simulador de Detecção • Arduino UNO</span>
-        </div>
-        <div class="header__clock" id="headerClock">--:--:--</div>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="cell cell-header">
+    <div class="brand">
+      <span class="brand-title">🔥 FireGuard IoT</span>
+      <span class="brand-sub">Sistema de Alarme de Incêndio · Arduino UNO</span>
+    </div>
+    <div class="header-right">
+      <div class="state-row">
+        <div class="state-pill green active" id="sp-SEGURO">SEGURO</div>
+        <span class="state-arrow">→</span>
+        <div class="state-pill yellow" id="sp-ALERTA">ALERTA</div>
+        <span class="state-arrow">→</span>
+        <div class="state-pill red" id="sp-PERIGO">PERIGO</div>
+        <span class="state-arrow">↓</span>
+        <div class="state-pill blue" id="sp-SILENCIADO">SILENCIADO</div>
       </div>
+      <div class="clock" id="clockEl">--:--:--</div>
+      <div class="sys-id">NODE-A0 · REV2</div>
+    </div>
+  </header>
 
-      <!-- ====== ESTADO GLOBAL ====== -->
-      <div class="state-bar">
-        <div class="state-bar__node state-bar__node--seguro" id="stateBarSeguro">
-          <span class="state-bar__dot"></span>
-          <span>SEGURO</span>
-        </div>
-        <div class="state-bar__arrow">→</div>
-        <div class="state-bar__node state-bar__node--alerta" id="stateBarAlerta">
-          <span class="state-bar__dot"></span>
-          <span>ALERTA</span>
-        </div>
-        <div class="state-bar__arrow">→</div>
-        <div class="state-bar__node state-bar__node--perigo" id="stateBarPerigo">
-          <span class="state-bar__dot"></span>
-          <span>PERIGO</span>
-        </div>
-        <div class="state-bar__arrow">↓</div>
-        <div class="state-bar__node state-bar__node--silenciado" id="stateBarSilenciado">
-          <span class="state-bar__dot"></span>
-          <span>SILENCIADO</span>
+  <!-- STATUS -->
+  <section class="cell cell-status">
+    <div class="sec-label">Estado do sistema</div>
+    <div class="status-main">
+      <div class="status-badge safe" id="statusBadge">
+        <div class="status-indicator"></div>
+        <div>
+          <div class="status-word" id="statusWord">SEGURO</div>
+          <div class="status-desc" id="statusDesc">Nenhuma chama detectada</div>
         </div>
       </div>
-    </header>
-
-    <!-- ====== GRID PRINCIPAL ====== -->
-    <main class="grid">
-
-      <!-- 1. STATUS CRÍTICO -->
-      <section class="cell cell--status" id="statusCell">
-        <div class="cell__header">STATUS</div>
-        <div class="cell__body">
-          <div class="status-display" id="statusDisplay">
-            <span class="status-display__icon" id="statusIcon">✔</span>
-            <span class="status-display__text" id="statusText">SEGURO</span>
-          </div>
-          <p class="status-display__desc" id="statusDesc">Nenhuma chama detectada</p>
-        </div>
-      </section>
-
-      <!-- 2. CONTROLES / SIMULAÇÃO -->
-      <section class="cell cell--controls">
-        <div class="cell__header">SIMULAÇÃO</div>
-        <div class="cell__body">
-          <div class="control-group">
-            <label>Nível (0-1023)</label>
-            <input type="range" id="flameSlider" min="0" max="1023" value="850" class="control__slider">
-            <output id="flameOutput" class="control__output">850</output>
-          </div>
-          <div class="control-buttons">
-            <button class="btn btn--primary" id="btnSeguro">SEGURO</button>
-            <button class="btn btn--secondary" id="btnAlerta">ALERTA</button>
-            <button class="btn btn--danger" id="btnPerigo">PERIGO</button>
-          </div>
-          <label class="toggle-label">
-            <input type="checkbox" id="toggleAuto">
-            <span>Variação Automática</span>
-          </label>
-        </div>
-      </section>
-
-      <!-- 3. GAUGE / SENSOR -->
-      <section class="cell cell--gauge">
-        <div class="cell__header">MEDIÇÃO</div>
-        <div class="cell__body">
-          <div class="gauge-container">
-            <canvas id="gaugeCanvas" width="240" height="160"></canvas>
-            <div class="gauge-value" id="gaugeValue">850</div>
+      <div>
+        <div class="sec-label" style="margin-bottom:8px;">Indicadores LED</div>
+        <div class="led-row">
+          <span class="led-label">VERDE</span>
+          <div class="led-pair">
+            <div class="led green-led on" id="lg1"></div>
+            <div class="led green-led on" id="lg2"></div>
           </div>
         </div>
-      </section>
-
-      <!-- 4. STATS -->
-      <section class="cell cell--stats">
-        <div class="cell__header">HISTÓRICO</div>
-        <div class="cell__body">
-          <div class="stats-row">
-            <div class="stat-item">
-              <span class="stat-label">MIN</span>
-              <span class="stat-value" id="sensorMin">—</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">MED</span>
-              <span class="stat-value" id="sensorAvg">—</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">MAX</span>
-              <span class="stat-value" id="sensorMax">—</span>
-            </div>
+        <div class="led-row" style="margin-top:6px;">
+          <span class="led-label">AMARELO</span>
+          <div class="led-pair">
+            <div class="led yellow-led" id="ly1"></div>
+            <div class="led yellow-led" id="ly2"></div>
           </div>
         </div>
-      </section>
-
-      <!-- 5. LEDs VIRTUAIS -->
-      <section class="cell cell--leds">
-        <div class="cell__header">LEDs</div>
-        <div class="cell__body">
-          <div class="leds-grid">
-            <div class="led led--green led--on" id="ledGreen1"></div>
-            <div class="led led--green led--on" id="ledGreen2"></div>
-            <div class="led led--yellow" id="ledYellow1"></div>
-            <div class="led led--yellow" id="ledYellow2"></div>
-            <div class="led led--red" id="ledRed1"></div>
-            <div class="led led--red" id="ledRed2"></div>
+        <div class="led-row" style="margin-top:6px;">
+          <span class="led-label">VERMELHO</span>
+          <div class="led-pair">
+            <div class="led red-led" id="lr1"></div>
+            <div class="led red-led" id="lr2"></div>
           </div>
         </div>
-      </section>
-
-      <!-- 6. DISPLAY 7-SEGMENTOS -->
-      <section class="cell cell--display7">
-        <div class="cell__header">DISPLAY</div>
-        <div class="cell__body">
-          <div class="seven-seg" id="sevenSeg">
-            <svg viewBox="0 0 100 160" class="seven-seg__svg">
-              <polygon id="segA" class="seg" points="18,8 82,8 76,18 24,18" />
-              <polygon id="segB" class="seg" points="84,10 84,74 76,68 76,20" />
-              <polygon id="segC" class="seg" points="84,82 84,146 76,138 76,90" />
-              <polygon id="segD" class="seg" points="18,148 82,148 76,138 24,138" />
-              <polygon id="segE" class="seg" points="16,82 16,146 24,138 24,90" />
-              <polygon id="segF" class="seg" points="16,10 16,74 24,68 24,20" />
-              <polygon id="segG" class="seg" points="20,76 80,76 76,84 24,84 20,80" />
-              <circle id="segDP" class="seg" cx="92" cy="146" r="6" />
-            </svg>
-          </div>
-          <p class="display7-hint" id="display7Hint">Ativo durante silenciamento</p>
+      </div>
+      <div class="thresh-bars">
+        <div class="thresh-row">
+          <div class="thresh-color" style="background:var(--red)"></div>
+          <span class="thresh-name">PERIGO</span>
+          <span class="thresh-range">0 – 300</span>
         </div>
-      </section>
-
-      <!-- 7. LIMIAR DE ALERTA -->
-      <section class="cell cell--thresholds">
-        <div class="cell__header">LIMIAR</div>
-        <div class="cell__body">
-          <div class="threshold-item threshold--green">
-            <span class="threshold-label">SEGURO</span>
-            <span class="threshold-value">701-1023</span>
-          </div>
-          <div class="threshold-item threshold--yellow">
-            <span class="threshold-label">ALERTA</span>
-            <span class="threshold-value">301-700</span>
-          </div>
-          <div class="threshold-item threshold--red">
-            <span class="threshold-label">PERIGO</span>
-            <span class="threshold-value">0-300</span>
-          </div>
+        <div class="thresh-row">
+          <div class="thresh-color" style="background:var(--yellow)"></div>
+          <span class="thresh-name">ALERTA</span>
+          <span class="thresh-range">301 – 700</span>
         </div>
-      </section>
-
-      <!-- 8. GRÁFICO (full-width) -->
-      <section class="cell cell--chart">
-        <div class="cell__header">HISTÓRICO</div>
-        <div class="cell__body">
-          <div class="chart-container">
-            <canvas id="chartCanvas"></canvas>
-          </div>
+        <div class="thresh-row">
+          <div class="thresh-color" style="background:var(--green)"></div>
+          <span class="thresh-name">SEGURO</span>
+          <span class="thresh-range">701 – 1023</span>
         </div>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <!-- 9. LOG SERIAL (full-width) -->
-      <section class="cell cell--log">
-        <div class="cell__header">MONITOR SERIAL</div>
-        <div class="cell__body">
-          <div class="serial-log" id="serialLog">
-            <p class="log-line log-line--info">[SYS] Simulador pronto</p>
-          </div>
-          <button class="btn btn--small" id="btnClearLog">LIMPAR</button>
-        </div>
-      </section>
+  <!-- SENSOR / GAUGE -->
+  <section class="cell cell-sensor">
+    <div class="sec-label">Leitura do sensor A0</div>
+    <div class="gauge-wrap">
+      <canvas id="gaugeCanvas" width="440" height="280"></canvas>
+    </div>
+    <div class="gauge-readout">
+      <div class="gauge-val" id="gaugeVal">850</div>
+      <div class="gauge-unit">/ 1023 ADC</div>
+    </div>
+    <div class="sensor-stats">
+      <div class="stat-box"><div class="stat-val" id="sMin">—</div><div class="stat-lbl">MÍN</div></div>
+      <div class="stat-box"><div class="stat-val" id="sMax">—</div><div class="stat-lbl">MÁX</div></div>
+      <div class="stat-box"><div class="stat-val" id="sAvg">—</div><div class="stat-lbl">MÉDIA</div></div>
+    </div>
+  </section>
 
-      <!-- 10. AÇÕES -->
-      <section class="cell cell--actions">
-        <div class="cell__header">AÇÕES</div>
-        <div class="cell__body">
-          <button class="btn btn--secondary" id="btnSilenciar" style="width: 100%; margin-bottom: 0.5rem;">🔇 SILENCIAR</button>
-          <p class="text-small">Silencia o alarme por 10 segundos</p>
-        </div>
-      </section>
+  <!-- DISPLAY 7-SEG -->
+  <section class="cell cell-display">
+    <div class="sec-label">Display 7 segmentos</div>
+    <div class="seven-wrap">
+      <svg class="seven-seg-svg" viewBox="0 0 100 160" aria-label="Display de 7 segmentos">
+        <polygon id="segA" class="seg" points="18,8 82,8 76,18 24,18" />
+        <polygon id="segB" class="seg" points="84,10 84,74 76,68 76,20" />
+        <polygon id="segC" class="seg" points="84,82 84,146 76,138 76,90" />
+        <polygon id="segD" class="seg" points="18,148 82,148 76,138 24,138" />
+        <polygon id="segE" class="seg" points="16,82 16,146 24,138 24,90" />
+        <polygon id="segF" class="seg" points="16,10 16,74 24,68 24,20" />
+        <polygon id="segG" class="seg" points="20,76 80,76 76,84 24,84 20,80" />
+        <circle  id="segDP" class="seg" cx="92" cy="146" r="6" />
+      </svg>
+    </div>
+    <p class="display-hint" id="dispHint">Contagem durante silenciamento</p>
+  </section>
 
-    </main>
+  <!-- GRÁFICO -->
+  <section class="cell cell-chart">
+    <div class="sec-label">Histórico · últimas 200 leituras</div>
+    <div class="chart-wrap">
+      <canvas id="chartCanvas"></canvas>
+    </div>
+    <div class="chart-legend">
+      <span class="leg-green">Seguro (&gt;700)</span>
+      <span class="leg-yellow">Alerta (301–700)</span>
+      <span class="leg-red">Perigo (≤300)</span>
+    </div>
+  </section>
 
-    <!-- ====== FOOTER ====== -->
-    <footer class="footer">
-      <p>Simulador • IoT • Richardson • Wallace • Emanuele • Vinícius | <a href="serial.html">Conectar ao Arduino →</a></p>
-    </footer>
-  </div>
+  <!-- CONTROLES -->
+  <section class="cell cell-controls">
+    <div class="sec-label">Controles de simulação</div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Nível do sensor (0 – 1023)</span>
+      <input type="range" id="flameSlider" min="0" max="1023" value="850" />
+      <div class="range-row">
+        <span>0</span><span id="sliderVal">850</span><span>1023</span>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Presets</span>
+      <div class="preset-row">
+        <button class="btn-preset btn-green"  id="btnSeguro">SEGURO</button>
+        <button class="btn-preset btn-yellow" id="btnAlerta">ALERTA</button>
+        <button class="btn-preset btn-red"    id="btnPerigo">PERIGO</button>
+      </div>
+      <button class="btn-mute" id="btnSilenciar">◼ SILENCIAR ALARME</button>
+    </div>
+    <div class="ctrl-group">
+      <label class="toggle-row">
+        <input type="checkbox" id="toggleAuto" />
+        <span>Modo automático (variação aleatória)</span>
+      </label>
+    </div>
+  </section>
 
-  <script src="app.js"></script>
+  <!-- SERIAL LOG -->
+  <section class="cell cell-log">
+    <div class="log-header">
+      <div class="sec-label">Monitor serial · 9600 baud</div>
+      <button class="btn-sm" id="btnClearLog">LIMPAR</button>
+    </div>
+    <div class="serial-log log-box" id="serialLog">
+      <p class="log-line info">=== FireGuard IoT · Alarme de Incêndio ===</p>
+      <p class="log-line normal">  Limiares: Seguro &gt; 700 | Alerta 301–700 | Perigo ≤ 300</p>
+      <p class="log-line info">Sistema pronto — monitorando chama...</p>
+    </div>
+  </section>
+
+</div>
+
+<footer style="text-align:center;padding:14px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;border-top:1px solid var(--border);">
+  Richardson · Wallace · Emanuele · Vinícius &nbsp;|&nbsp;
+  <a href="serial.html" style="color:var(--blue);text-decoration:none;">Conectar ao Arduino real (Web Serial API)</a>
+</footer>
+
+<script src="app.js"></script>
 </body>
 </html>
