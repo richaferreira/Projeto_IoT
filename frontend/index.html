@@ -3,214 +3,207 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alarme de Incêndio IoT — Dashboard</title>
+  <title>ALARME IOT — SIMULADOR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ====== HEADER ====== -->
-  <header class="header">
-    <div class="header__logo">
-      <span class="header__icon" aria-hidden="true">🔥</span>
-      <h1>Alarme de Incêndio IoT</h1>
-    </div>
-    <p class="header__subtitle">Monitoramento em tempo real — Arduino UNO + Sensor de Chama</p>
-  </header>
-
-  <main class="dashboard">
-    <!-- ====== PAINEL DE STATUS ====== -->
-    <section class="card card--status" id="statusCard">
-      <h2 class="card__title">Estado do Sistema</h2>
-
-      <div class="status-badge" id="statusBadge">
-        <span class="status-badge__icon" id="statusIcon">✔</span>
-        <span class="status-badge__label" id="statusLabel">SEGURO</span>
+  <div class="container">
+    <!-- ====== HEADER / SISTEMA ====== -->
+    <header class="header">
+      <div class="header__top">
+        <div class="header__branding">
+          <h1>◆ ALARME INCÊNDIO IOT</h1>
+          <span class="header__subtitle">Simulador de Detecção • Arduino UNO</span>
+        </div>
+        <div class="header__clock" id="headerClock">--:--:--</div>
       </div>
 
-      <p class="status-desc" id="statusDesc">Nenhuma chama detectada. Ambiente seguro.</p>
-
-      <!-- LEDs virtuais -->
-      <div class="leds" aria-label="Indicadores LED">
-        <div class="led led--green led--on" id="ledGreen1"></div>
-        <div class="led led--green led--on" id="ledGreen2"></div>
-        <div class="led led--yellow" id="ledYellow1"></div>
-        <div class="led led--yellow" id="ledYellow2"></div>
-        <div class="led led--red" id="ledRed1"></div>
-        <div class="led led--red" id="ledRed2"></div>
-      </div>
-    </section>
-
-    <!-- ====== PAINEL DO SENSOR (GAUGE) ====== -->
-    <section class="card card--sensor">
-      <h2 class="card__title">Medição do Sensor</h2>
-
-      <div class="gauge-wrapper">
-        <canvas id="gaugeCanvas" width="340" height="220"></canvas>
-        <div class="gauge-center-info">
-          <span class="gauge__value" id="gaugeValue">850</span>
-          <span class="gauge__unit">/ 1023</span>
+      <!-- ====== ESTADO GLOBAL ====== -->
+      <div class="state-bar">
+        <div class="state-bar__node state-bar__node--seguro" id="stateBarSeguro">
+          <span class="state-bar__dot"></span>
+          <span>SEGURO</span>
+        </div>
+        <div class="state-bar__arrow">→</div>
+        <div class="state-bar__node state-bar__node--alerta" id="stateBarAlerta">
+          <span class="state-bar__dot"></span>
+          <span>ALERTA</span>
+        </div>
+        <div class="state-bar__arrow">→</div>
+        <div class="state-bar__node state-bar__node--perigo" id="stateBarPerigo">
+          <span class="state-bar__dot"></span>
+          <span>PERIGO</span>
+        </div>
+        <div class="state-bar__arrow">↓</div>
+        <div class="state-bar__node state-bar__node--silenciado" id="stateBarSilenciado">
+          <span class="state-bar__dot"></span>
+          <span>SILENCIADO</span>
         </div>
       </div>
+    </header>
 
-      <div class="sensor-meta">
-        <div class="sensor-meta__item">
-          <span class="sensor-meta__label">Mínimo</span>
-          <span class="sensor-meta__val" id="sensorMin">—</span>
-        </div>
-        <div class="sensor-meta__item">
-          <span class="sensor-meta__label">Máximo</span>
-          <span class="sensor-meta__val" id="sensorMax">—</span>
-        </div>
-        <div class="sensor-meta__item">
-          <span class="sensor-meta__label">Média</span>
-          <span class="sensor-meta__val" id="sensorAvg">—</span>
-        </div>
-      </div>
+    <!-- ====== GRID PRINCIPAL ====== -->
+    <main class="grid">
 
-      <!-- Limiares visuais -->
-      <div class="thresholds">
-        <div class="threshold threshold--red">
-          <span class="threshold__marker"></span>
-          <span>0 – 300 — Perigo</span>
+      <!-- 1. STATUS CRÍTICO -->
+      <section class="cell cell--status" id="statusCell">
+        <div class="cell__header">STATUS</div>
+        <div class="cell__body">
+          <div class="status-display" id="statusDisplay">
+            <span class="status-display__icon" id="statusIcon">✔</span>
+            <span class="status-display__text" id="statusText">SEGURO</span>
+          </div>
+          <p class="status-display__desc" id="statusDesc">Nenhuma chama detectada</p>
         </div>
-        <div class="threshold threshold--yellow">
-          <span class="threshold__marker"></span>
-          <span>301 – 700 — Alerta</span>
+      </section>
+
+      <!-- 2. CONTROLES / SIMULAÇÃO -->
+      <section class="cell cell--controls">
+        <div class="cell__header">SIMULAÇÃO</div>
+        <div class="cell__body">
+          <div class="control-group">
+            <label>Nível (0-1023)</label>
+            <input type="range" id="flameSlider" min="0" max="1023" value="850" class="control__slider">
+            <output id="flameOutput" class="control__output">850</output>
+          </div>
+          <div class="control-buttons">
+            <button class="btn btn--primary" id="btnSeguro">SEGURO</button>
+            <button class="btn btn--secondary" id="btnAlerta">ALERTA</button>
+            <button class="btn btn--danger" id="btnPerigo">PERIGO</button>
+          </div>
+          <label class="toggle-label">
+            <input type="checkbox" id="toggleAuto">
+            <span>Variação Automática</span>
+          </label>
         </div>
-        <div class="threshold threshold--green">
-          <span class="threshold__marker"></span>
-          <span>701 – 1023 — Seguro</span>
+      </section>
+
+      <!-- 3. GAUGE / SENSOR -->
+      <section class="cell cell--gauge">
+        <div class="cell__header">MEDIÇÃO</div>
+        <div class="cell__body">
+          <div class="gauge-container">
+            <canvas id="gaugeCanvas" width="240" height="160"></canvas>
+            <div class="gauge-value" id="gaugeValue">850</div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ====== DISPLAY 7-SEGMENTOS ====== -->
-    <section class="card card--display7">
-      <h2 class="card__title">Display 7 Segmentos</h2>
-      <div class="seven-seg" id="sevenSeg" aria-label="Display 7 segmentos">
-        <!-- Segmentos SVG renderizados via JS -->
-        <svg viewBox="0 0 100 160" class="seven-seg__svg">
-          <!-- Segmento A (topo) -->
-          <polygon id="segA" class="seg" points="18,8 82,8 76,18 24,18" />
-          <!-- Segmento B (topo-direito) -->
-          <polygon id="segB" class="seg" points="84,10 84,74 76,68 76,20" />
-          <!-- Segmento C (baixo-direito) -->
-          <polygon id="segC" class="seg" points="84,82 84,146 76,138 76,90" />
-          <!-- Segmento D (base) -->
-          <polygon id="segD" class="seg" points="18,148 82,148 76,138 24,138" />
-          <!-- Segmento E (baixo-esquerdo) -->
-          <polygon id="segE" class="seg" points="16,82 16,146 24,138 24,90" />
-          <!-- Segmento F (topo-esquerdo) -->
-          <polygon id="segF" class="seg" points="16,10 16,74 24,68 24,20" />
-          <!-- Segmento G (meio) -->
-          <polygon id="segG" class="seg" points="20,76 80,76 76,84 24,84 20,80" />
-          <!-- Ponto decimal -->
-          <circle id="segDP" class="seg" cx="92" cy="146" r="6" />
-        </svg>
-      </div>
-      <p class="display7-hint" id="display7Hint">Ativo durante o silenciamento</p>
-    </section>
-
-    <!-- ====== GRÁFICO DE HISTÓRICO ====== -->
-    <section class="card card--chart">
-      <h2 class="card__title">Histórico de Leituras</h2>
-      <div class="chart-container">
-        <canvas id="chartCanvas"></canvas>
-      </div>
-      <div class="chart-legend">
-        <span class="chart-legend__item chart-legend__item--green">Seguro (&gt;700)</span>
-        <span class="chart-legend__item chart-legend__item--yellow">Alerta (301-700)</span>
-        <span class="chart-legend__item chart-legend__item--red">Perigo (≤300)</span>
-      </div>
-    </section>
-
-    <!-- ====== DIAGRAMA DE ESTADOS ====== -->
-    <section class="card card--states">
-      <h2 class="card__title">Diagrama de Estados</h2>
-      <div class="state-diagram">
-        <div class="state-node state-node--green" id="stateSeguro">
-          <span class="state-node__label">SEGURO</span>
-          <span class="state-node__sub">LEDs verdes</span>
+      <!-- 4. STATS -->
+      <section class="cell cell--stats">
+        <div class="cell__header">HISTÓRICO</div>
+        <div class="cell__body">
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-label">MIN</span>
+              <span class="stat-value" id="sensorMin">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">MED</span>
+              <span class="stat-value" id="sensorAvg">—</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">MAX</span>
+              <span class="stat-value" id="sensorMax">—</span>
+            </div>
+          </div>
         </div>
-        <div class="state-arrow state-arrow--right" id="arrowSeguroAlerta">
-          <span>≤ 670</span>
-          <span class="arrow-icon">→</span>
+      </section>
+
+      <!-- 5. LEDs VIRTUAIS -->
+      <section class="cell cell--leds">
+        <div class="cell__header">LEDs</div>
+        <div class="cell__body">
+          <div class="leds-grid">
+            <div class="led led--green led--on" id="ledGreen1"></div>
+            <div class="led led--green led--on" id="ledGreen2"></div>
+            <div class="led led--yellow" id="ledYellow1"></div>
+            <div class="led led--yellow" id="ledYellow2"></div>
+            <div class="led led--red" id="ledRed1"></div>
+            <div class="led led--red" id="ledRed2"></div>
+          </div>
         </div>
-        <div class="state-node state-node--yellow" id="stateAlerta">
-          <span class="state-node__label">ALERTA</span>
-          <span class="state-node__sub">LEDs amarelos</span>
+      </section>
+
+      <!-- 6. DISPLAY 7-SEGMENTOS -->
+      <section class="cell cell--display7">
+        <div class="cell__header">DISPLAY</div>
+        <div class="cell__body">
+          <div class="seven-seg" id="sevenSeg">
+            <svg viewBox="0 0 100 160" class="seven-seg__svg">
+              <polygon id="segA" class="seg" points="18,8 82,8 76,18 24,18" />
+              <polygon id="segB" class="seg" points="84,10 84,74 76,68 76,20" />
+              <polygon id="segC" class="seg" points="84,82 84,146 76,138 76,90" />
+              <polygon id="segD" class="seg" points="18,148 82,148 76,138 24,138" />
+              <polygon id="segE" class="seg" points="16,82 16,146 24,138 24,90" />
+              <polygon id="segF" class="seg" points="16,10 16,74 24,68 24,20" />
+              <polygon id="segG" class="seg" points="20,76 80,76 76,84 24,84 20,80" />
+              <circle id="segDP" class="seg" cx="92" cy="146" r="6" />
+            </svg>
+          </div>
+          <p class="display7-hint" id="display7Hint">Ativo durante silenciamento</p>
         </div>
-        <div class="state-arrow state-arrow--right" id="arrowAlertaPerigo">
-          <span>≤ 270</span>
-          <span class="arrow-icon">→</span>
+      </section>
+
+      <!-- 7. LIMIAR DE ALERTA -->
+      <section class="cell cell--thresholds">
+        <div class="cell__header">LIMIAR</div>
+        <div class="cell__body">
+          <div class="threshold-item threshold--green">
+            <span class="threshold-label">SEGURO</span>
+            <span class="threshold-value">701-1023</span>
+          </div>
+          <div class="threshold-item threshold--yellow">
+            <span class="threshold-label">ALERTA</span>
+            <span class="threshold-value">301-700</span>
+          </div>
+          <div class="threshold-item threshold--red">
+            <span class="threshold-label">PERIGO</span>
+            <span class="threshold-value">0-300</span>
+          </div>
         </div>
-        <div class="state-node state-node--red" id="statePerigo">
-          <span class="state-node__label">PERIGO</span>
-          <span class="state-node__sub">LEDs vermelhos + buzzer</span>
+      </section>
+
+      <!-- 8. GRÁFICO (full-width) -->
+      <section class="cell cell--chart">
+        <div class="cell__header">HISTÓRICO</div>
+        <div class="cell__body">
+          <div class="chart-container">
+            <canvas id="chartCanvas"></canvas>
+          </div>
         </div>
-        <div class="state-arrow state-arrow--down" id="arrowPerigoSilenciado">
-          <span class="arrow-icon">↓</span>
-          <span>botão</span>
+      </section>
+
+      <!-- 9. LOG SERIAL (full-width) -->
+      <section class="cell cell--log">
+        <div class="cell__header">MONITOR SERIAL</div>
+        <div class="cell__body">
+          <div class="serial-log" id="serialLog">
+            <p class="log-line log-line--info">[SYS] Simulador pronto</p>
+          </div>
+          <button class="btn btn--small" id="btnClearLog">LIMPAR</button>
         </div>
-        <div class="state-node state-node--muted" id="stateSilenciado">
-          <span class="state-node__label">SILENCIADO</span>
-          <span class="state-node__sub">Contagem regressiva</span>
+      </section>
+
+      <!-- 10. AÇÕES -->
+      <section class="cell cell--actions">
+        <div class="cell__header">AÇÕES</div>
+        <div class="cell__body">
+          <button class="btn btn--secondary" id="btnSilenciar" style="width: 100%; margin-bottom: 0.5rem;">🔇 SILENCIAR</button>
+          <p class="text-small">Silencia o alarme por 10 segundos</p>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ====== CONTROLES DE SIMULAÇÃO ====== -->
-    <section class="card card--controls">
-      <h2 class="card__title">Controles de Simulação</h2>
+    </main>
 
-      <div class="control-group">
-        <label for="flameSlider">Nível do Sensor (0 – 1023)</label>
-        <input type="range" id="flameSlider" min="0" max="1023" value="850" />
-        <output id="flameOutput">850</output>
-      </div>
-
-      <div class="control-buttons">
-        <button class="btn btn--green" id="btnSeguro">Simular Seguro</button>
-        <button class="btn btn--yellow" id="btnAlerta">Simular Alerta</button>
-        <button class="btn btn--red" id="btnPerigo">Simular Perigo</button>
-      </div>
-
-      <hr class="control-divider" />
-
-      <button class="btn btn--muted btn--wide" id="btnSilenciar">
-        🔇 Silenciar Alarme
-      </button>
-
-      <div class="control-group">
-        <label class="toggle-label">
-          <input type="checkbox" id="toggleAuto" />
-          <span>Modo automático (variação aleatória)</span>
-        </label>
-      </div>
-    </section>
-
-    <!-- ====== LOG SERIAL ====== -->
-    <section class="card card--log">
-      <h2 class="card__title">Monitor Serial</h2>
-      <div class="serial-log" id="serialLog">
-        <p class="log-line log-line--info">=== Alarme de Incêndio IoT ===</p>
-        <p class="log-line log-line--info">Limiares configurados:</p>
-        <p class="log-line">&nbsp;&nbsp;Seguro  &gt; 700</p>
-        <p class="log-line">&nbsp;&nbsp;Alerta  &gt; 300 e &lt;= 700</p>
-        <p class="log-line">&nbsp;&nbsp;Perigo &lt;= 300</p>
-        <p class="log-line log-line--info">Sistema pronto - monitorando chama...</p>
-      </div>
-      <button class="btn btn--small" id="btnClearLog">Limpar log</button>
-    </section>
-  </main>
-
-  <!-- ====== FOOTER ====== -->
-  <footer class="footer">
-    <p>Projeto acadêmico — Internet das Coisas (IoT) &bull; Arduino UNO</p>
-    <p class="footer__team">Richardson &bull; Wallace &bull; Emanuele &bull; Vinícius</p>
-    <p class="footer__links">
-      <a href="serial.html">Conectar ao Arduino real (Web Serial API)</a>
-    </p>
-  </footer>
+    <!-- ====== FOOTER ====== -->
+    <footer class="footer">
+      <p>Simulador • IoT • Richardson • Wallace • Emanuele • Vinícius | <a href="serial.html">Conectar ao Arduino →</a></p>
+    </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>
