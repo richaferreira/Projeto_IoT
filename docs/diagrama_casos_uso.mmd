@@ -1,0 +1,37 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#1a1f35', 'primaryTextColor': '#c8cfe0', 'primaryBorderColor': '#448aff', 'lineColor': '#5a6380', 'secondaryColor': '#0e1018', 'tertiaryColor': '#13161f', 'background': '#08090c', 'mainBkg': '#0e1018', 'nodeBorder': '#2a3050', 'clusterBkg': '#13161f', 'titleColor': '#c8cfe0', 'edgeLabelBackground': '#0e1018', 'actorBkg': '#13161f', 'actorBorder': '#448aff', 'actorTextColor': '#c8cfe0', 'actorLineColor': '#5a6380', 'signalColor': '#c8cfe0', 'signalTextColor': '#c8cfe0', 'labelBoxBkgColor': '#13161f', 'labelBoxBorderColor': '#2a3050', 'labelTextColor': '#c8cfe0', 'loopTextColor': '#c8cfe0', 'noteBorderColor': '#2a3050', 'noteBkgColor': '#13161f', 'noteTextColor': '#c8cfe0'}}}%%
+graph LR
+    subgraph Atores
+        U["👤 Usuário"]
+        A["🤖 Arduino\n(Hardware)"]
+        S["🖥️ Sistema\n(Backend)"]
+    end
+
+    subgraph UC["Casos de Uso — FireGuard IoT"]
+        UC1["UC01\nMonitorar ambiente\n(sensor de chama)"]
+        UC2["UC02\nVisualizar estado\ndo sistema"]
+        UC3["UC03\nSilenciar alarme\n(botão físico)"]
+        UC4["UC04\nVisualizar dashboard\nem tempo real"]
+        UC5["UC05\nConectar ao Arduino\nvia Web Serial"]
+        UC6["UC06\nConsultar histórico\nde leituras"]
+        UC7["UC07\nFiltrar dados\nhistóricos"]
+        UC8["UC08\nExportar dados\nem CSV"]
+        UC9["UC09\nArmazenar leitura\nno banco de dados"]
+        UC10["UC10\nVisualizar\nestatísticas resumidas"]
+    end
+
+    A --> UC1
+    A --> UC2
+    U --> UC3
+    U --> UC4
+    U --> UC5
+    U --> UC6
+    U --> UC8
+    S --> UC9
+
+    UC1 --> UC9
+    UC6 --> UC7
+    UC6 --> UC10
+    UC5 --> UC4
+
+    style UC fill:#0e1018,stroke:#2a3050
+    style Atores fill:#0e1018,stroke:#2a3050

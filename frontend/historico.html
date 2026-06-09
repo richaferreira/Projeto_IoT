@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FireGuard IoT — Histórico de Leituras</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Estilos específicos da página de histórico ── */
+    .cell-hist-filters { grid-column: 1 / -1; grid-row: 2; }
+    .cell-hist-stats   { grid-column: 1 / -1; grid-row: 3; }
+    .cell-hist-chart   { grid-column: 1 / -1; grid-row: 4; }
+    .cell-hist-table   { grid-column: 1 / -1; grid-row: 5; }
+
+    /* Filtros */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .filter-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .filter-input, .filter-select {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      min-width: 120px;
+    }
+    .filter-input:focus, .filter-select:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+    .btn-filter {
+      padding: 7px 18px;
+      border: 1px solid var(--blue);
+      background: transparent;
+      color: var(--blue);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .1em;
+      cursor: pointer;
+      text-transform: uppercase;
+      border-radius: var(--radius);
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .btn-filter:hover { background: #0a1433; }
+    .btn-filter.active { background: var(--blue); color: #000; }
+
+    .preset-filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* Cards de estatísticas */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-card-val {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: bold;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-card-lbl {
+      font-family: var(--mono);
+      font-size: 8px;
+      color: var(--muted);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .stat-card.c-total  .stat-card-val { color: var(--blue); }
+    .stat-card.c-seguro .stat-card-val { color: var(--green); }
+    .stat-card.c-alerta .stat-card-val { color: var(--yellow); }
+    .stat-card.c-perigo .stat-card-val { color: var(--red); }
+    .stat-card.c-sensor .stat-card-val { color: var(--text); }
+
+    /* Gráfico */
+    .hist-chart-wrap {
+      width: 100%;
+      height: 180px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      position: relative;
+      overflow: hidden;
+    }
+    #histChartCanvas { width: 100%; height: 100%; }
+
+    /* Tabela */
+    .table-wrap {
+      overflow-x: auto;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+    .table-wrap::-webkit-scrollbar-track { background: var(--surface); }
+    .table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    table.hist-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .hist-table th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border2);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .hist-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .hist-table tr:hover td { background: var(--surface2); }
+
+    .badge-estado {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-size: 9px;
+      letter-spacing: .08em;
+      font-weight: bold;
+    }
+    .badge-SEGURO     { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green); }
+    .badge-ALERTA     { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+    .badge-PERIGO     { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); }
+    .badge-SILENCIADO { background: #0a1433;           color: var(--blue);   border: 1px solid var(--blue); }
+
+    .sensor-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sensor-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border2);
+      flex: 1;
+      max-width: 80px;
+      overflow: hidden;
+    }
+    .sensor-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .3s;
+    }
+
+    .table-info {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 8px;
+      text-align: right;
+    }
+
+    .loading-msg {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .no-data-msg {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    /* Responsivo */
+    @media (max-width: 700px) {
+      .filter-bar { flex-direction: column; }
+      .preset-filters { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell" style="grid-template-rows: auto auto auto auto auto;">
+
+  <!-- HEADER -->
+  <header class="cell cell-header">
+    <div class="brand">
+      <span class="brand-title">🔥 FireGuard IoT</span>
+      <span class="brand-sub">Histórico de Leituras · Banco de Dados</span>
+    </div>
+    <div class="header-right">
+      <div class="clock" id="clockEl">--:--:--</div>
+      <nav style="display:flex;gap:10px;">
+        <a href="index.html"  style="color:var(--muted);font-family:var(--mono);font-size:9px;text-decoration:none;letter-spacing:.08em;">SIMULAÇÃO</a>
+        <a href="serial.html" style="color:var(--muted);font-family:var(--mono);font-size:9px;text-decoration:none;letter-spacing:.08em;">SERIAL</a>
+        <a href="historico.html" style="color:var(--blue);font-family:var(--mono);font-size:9px;text-decoration:none;letter-spacing:.08em;border-bottom:1px solid var(--blue);">HISTÓRICO</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- FILTROS -->
+  <section class="cell cell-hist-filters">
+    <div class="sec-label">Filtros de consulta</div>
+
+    <!-- Atalhos rápidos -->
+    <div class="preset-filters" style="margin-bottom:14px;">
+      <span class="filter-label" style="margin-bottom:0;">Período rápido:</span>
+      <button class="btn-filter active" id="btnHoje"   onclick="aplicarPeriodo('hoje')">Hoje</button>
+      <button class="btn-filter"        id="btnOntem"  onclick="aplicarPeriodo('ontem')">Ontem</button>
+      <button class="btn-filter"        id="btnSemana" onclick="aplicarPeriodo('semana')">Últimos 7 dias</button>
+      <button class="btn-filter"        id="btnMes"    onclick="aplicarPeriodo('mes')">Este mês</button>
+      <button class="btn-filter"        id="btnTodos"  onclick="aplicarPeriodo('todos')">Todos</button>
+    </div>
+
+    <!-- Filtros avançados -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">Data início</span>
+        <input type="date" id="filtDataIni" class="filter-input" />
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Data fim</span>
+        <input type="date" id="filtDataFim" class="filter-input" />
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Estado</span>
+        <select id="filtEstado" class="filter-select">
+          <option value="TODOS">Todos os estados</option>
+          <option value="SEGURO">SEGURO</option>
+          <option value="ALERTA">ALERTA</option>
+          <option value="PERIGO">PERIGO</option>
+          <option value="SILENCIADO">SILENCIADO</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Limite de registros</span>
+        <select id="filtLimite" class="filter-select">
+          <option value="50">50 registros</option>
+          <option value="100">100 registros</option>
+          <option value="200" selected>200 registros</option>
+          <option value="500">500 registros</option>
+          <option value="1000">1000 registros</option>
+        </select>
+      </div>
+      <button class="btn-filter" onclick="buscarDados()" style="margin-top:18px;">🔍 Consultar</button>
+      <button class="btn-filter" onclick="limparFiltros()" style="margin-top:18px;border-color:var(--muted);color:var(--muted);">✕ Limpar</button>
+    </div>
+  </section>
+
+  <!-- ESTATÍSTICAS -->
+  <section class="cell cell-hist-stats">
+    <div class="sec-label">Resumo do período consultado</div>
+    <div class="stats-grid">
+      <div class="stat-card c-total">
+        <div class="stat-card-val" id="stTotal">—</div>
+        <div class="stat-card-lbl">Total de leituras</div>
+      </div>
+      <div class="stat-card c-seguro">
+        <div class="stat-card-val" id="stSeguro">—</div>
+        <div class="stat-card-lbl">Seguro</div>
+      </div>
+      <div class="stat-card c-alerta">
+        <div class="stat-card-val" id="stAlerta">—</div>
+        <div class="stat-card-lbl">Alerta</div>
+      </div>
+      <div class="stat-card c-perigo">
+        <div class="stat-card-val" id="stPerigo">—</div>
+        <div class="stat-card-lbl">Perigo</div>
+      </div>
+      <div class="stat-card c-sensor">
+        <div class="stat-card-val" id="stMin">—</div>
+        <div class="stat-card-lbl">Sensor mín.</div>
+      </div>
+      <div class="stat-card c-sensor">
+        <div class="stat-card-val" id="stMax">—</div>
+        <div class="stat-card-lbl">Sensor máx.</div>
+      </div>
+      <div class="stat-card c-sensor">
+        <div class="stat-card-val" id="stAvg">—</div>
+        <div class="stat-card-lbl">Sensor média</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GRÁFICO HISTÓRICO -->
+  <section class="cell cell-hist-chart">
+    <div class="sec-label">Gráfico do histórico consultado</div>
+    <div class="hist-chart-wrap">
+      <canvas id="histChartCanvas"></canvas>
+    </div>
+    <div class="chart-legend" style="margin-top:8px;">
+      <span class="leg-green">Seguro (&gt;700)</span>
+      <span class="leg-yellow">Alerta (301–700)</span>
+      <span class="leg-red">Perigo (≤300)</span>
+    </div>
+  </section>
+
+  <!-- TABELA DE DADOS -->
+  <section class="cell cell-hist-table">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="sec-label" style="margin-bottom:0;">Registros do banco de dados</div>
+      <button class="btn-sm" onclick="exportarCSV()">⬇ Exportar CSV</button>
+    </div>
+    <div class="table-wrap" id="tableWrap">
+      <div class="loading-msg">Carregando dados...</div>
+    </div>
+    <div class="table-info" id="tableInfo"></div>
+  </section>
+
+</div>
+
+<footer style="text-align:center;padding:14px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;border-top:1px solid var(--border);">
+  Richardson · Wallace · Emanuele · Vinícius &nbsp;|&nbsp; FireGuard IoT — Trabalho 2
+</footer>
+
+<script>
+// =============================================================================
+// FireGuard IoT — Histórico de Leituras (historico.js embutido)
+// =============================================================================
+
+const API_BASE = window.location.port === "5000"
+  ? ""
+  : "http://localhost:5000";
+
+// ── Relógio ──────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clockEl").textContent =
+    [now.getHours(), now.getMinutes(), now.getSeconds()]
+      .map(n => String(n).padStart(2, "0")).join(":");
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Estado dos filtros ───────────────────────────────────────────────────────
+let periodoAtivo = "hoje";
+let dadosAtuais  = [];
+
+// ── Inicializar datas padrão ─────────────────────────────────────────────────
+(function initDatas() {
+  const hoje = new Date();
+  const fmt  = d => d.toISOString().split("T")[0];
+  document.getElementById("filtDataIni").value = fmt(hoje);
+  document.getElementById("filtDataFim").value = fmt(hoje);
+})();
+
+// ── Atalhos de período ───────────────────────────────────────────────────────
+function aplicarPeriodo(periodo) {
+  periodoAtivo = periodo;
+  const hoje = new Date();
+  const fmt  = d => d.toISOString().split("T")[0];
+
+  const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+  const semana = new Date(hoje); semana.setDate(hoje.getDate() - 6);
+  const mes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+  const mapa = {
+    hoje:   [fmt(hoje),  fmt(hoje)],
+    ontem:  [fmt(ontem), fmt(ontem)],
+    semana: [fmt(semana),fmt(hoje)],
+    mes:    [fmt(mes),   fmt(hoje)],
+    todos:  ["", ""],
+  };
+
+  const [ini, fim] = mapa[periodo] || ["", ""];
+  document.getElementById("filtDataIni").value = ini;
+  document.getElementById("filtDataFim").value = fim;
+
+  // Atualizar botões ativos
+  ["btnHoje","btnOntem","btnSemana","btnMes","btnTodos"].forEach(id => {
+    document.getElementById(id).classList.remove("active");
+  });
+  const btnMap = { hoje:"btnHoje", ontem:"btnOntem", semana:"btnSemana", mes:"btnMes", todos:"btnTodos" };
+  if (btnMap[periodo]) document.getElementById(btnMap[periodo]).classList.add("active");
+
+  buscarDados();
+}
+
+function limparFiltros() {
+  document.getElementById("filtDataIni").value = "";
+  document.getElementById("filtDataFim").value = "";
+  document.getElementById("filtEstado").value  = "TODOS";
+  document.getElementById("filtLimite").value  = "200";
+  ["btnHoje","btnOntem","btnSemana","btnMes","btnTodos"].forEach(id =>
+    document.getElementById(id).classList.remove("active"));
+  periodoAtivo = "";
+  buscarDados();
+}
+
+// ── Buscar dados da API ──────────────────────────────────────────────────────
+async function buscarDados() {
+  const dataIni = document.getElementById("filtDataIni").value;
+  const dataFim = document.getElementById("filtDataFim").value;
+  const estado  = document.getElementById("filtEstado").value;
+  const limite  = document.getElementById("filtLimite").value;
+
+  const params = new URLSearchParams();
+  if (dataIni) params.set("data_inicio", dataIni);
+  if (dataFim) params.set("data_fim", dataFim);
+  if (estado && estado !== "TODOS") params.set("estado", estado);
+  params.set("limite", limite);
+
+  document.getElementById("tableWrap").innerHTML =
+    '<div class="loading-msg">Buscando dados...</div>';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/leituras?${params}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    dadosAtuais = await resp.json();
+    renderTabela(dadosAtuais);
+    renderEstatisticas(dadosAtuais);
+    renderGrafico(dadosAtuais);
+  } catch (err) {
+    document.getElementById("tableWrap").innerHTML =
+      `<div class="no-data-msg">⚠ Erro ao conectar com o servidor backend.<br>
+       Certifique-se de que o servidor está rodando em <code>localhost:5000</code>.<br>
+       <small style="color:var(--muted)">${err.message}</small></div>`;
+    renderEstatisticasVazias();
+  }
+}
+
+// ── Renderizar tabela ────────────────────────────────────────────────────────
+function renderTabela(dados) {
+  const wrap = document.getElementById("tableWrap");
+  const info = document.getElementById("tableInfo");
+
+  if (!dados.length) {
+    wrap.innerHTML = '<div class="no-data-msg">Nenhum registro encontrado para os filtros selecionados.</div>';
+    info.textContent = "";
+    return;
+  }
+
+  const linhas = dados.map(r => {
+    const cor = r.sensor <= 300 ? "#ff1744" : r.sensor <= 700 ? "#ffd600" : "#00e676";
+    const pct = Math.round((r.sensor / 1023) * 100);
+    return `<tr>
+      <td style="color:var(--muted)">${r.id}</td>
+      <td>${r.timestamp}</td>
+      <td>
+        <div class="sensor-bar-wrap">
+          <span style="min-width:36px">${r.sensor}</span>
+          <div class="sensor-bar">
+            <div class="sensor-bar-fill" style="width:${pct}%;background:${cor}"></div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge-estado badge-${r.estado}">${r.estado}</span></td>
+    </tr>`;
+  }).join("");
+
+  wrap.innerHTML = `
+    <table class="hist-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Data / Hora</th>
+          <th>Sensor (0–1023)</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+
+  info.textContent = `Exibindo ${dados.length} registro(s)`;
+}
+
+// ── Estatísticas do período ──────────────────────────────────────────────────
+function renderEstatisticas(dados) {
+  if (!dados.length) { renderEstatisticasVazias(); return; }
+
+  const total   = dados.length;
+  const seguro  = dados.filter(r => r.estado === "SEGURO").length;
+  const alerta  = dados.filter(r => r.estado === "ALERTA").length;
+  const perigo  = dados.filter(r => r.estado === "PERIGO").length;
+  const sensores = dados.map(r => r.sensor);
+  const minS    = Math.min(...sensores);
+  const maxS    = Math.max(...sensores);
+  const avgS    = Math.round(sensores.reduce((a,b) => a+b, 0) / sensores.length);
+
+  document.getElementById("stTotal").textContent  = total;
+  document.getElementById("stSeguro").textContent = seguro;
+  document.getElementById("stAlerta").textContent = alerta;
+  document.getElementById("stPerigo").textContent = perigo;
+  document.getElementById("stMin").textContent    = minS;
+  document.getElementById("stMax").textContent    = maxS;
+  document.getElementById("stAvg").textContent    = avgS;
+}
+
+function renderEstatisticasVazias() {
+  ["stTotal","stSeguro","stAlerta","stPerigo","stMin","stMax","stAvg"]
+    .forEach(id => document.getElementById(id).textContent = "—");
+}
+
+// ── Gráfico histórico (Canvas) ───────────────────────────────────────────────
+function renderGrafico(dados) {
+  const canvas = document.getElementById("histChartCanvas");
+  const ctx    = canvas.getContext("2d");
+  const wrap   = canvas.parentElement;
+
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const pad = { top: 10, right: 10, bottom: 20, left: 40 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const yFor = v => pad.top + plotH * (1 - v / 1023);
+
+  // Zonas
+  ctx.fillStyle = "rgba(0,255,65,.06)";
+  ctx.fillRect(pad.left, yFor(1023), plotW, yFor(700) - yFor(1023));
+  ctx.fillStyle = "rgba(255,255,0,.06)";
+  ctx.fillRect(pad.left, yFor(700), plotW, yFor(300) - yFor(700));
+  ctx.fillStyle = "rgba(255,0,51,.06)";
+  ctx.fillRect(pad.left, yFor(300), plotW, yFor(0) - yFor(300));
+
+  // Linhas de limiar
+  ctx.setLineDash([4,4]);
+  ctx.lineWidth = 1;
+  [[700,"rgba(0,255,65,.4)"],[300,"rgba(255,0,51,.4)"]].forEach(([v,c]) => {
+    ctx.strokeStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yFor(v));
+    ctx.lineTo(w - pad.right, yFor(v));
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // Labels eixo Y
+  ctx.font = "10px monospace";
+  ctx.fillStyle = "rgba(0,255,65,.6)";
+  ctx.fillText("700", 4, yFor(700) + 4);
+  ctx.fillStyle = "rgba(255,0,51,.6)";
+  ctx.fillText("300", 4, yFor(300) + 4);
+
+  if (!dados.length || dados.length < 2) return;
+
+  // Dados em ordem cronológica
+  const sorted = [...dados].reverse();
+  const n = sorted.length;
+
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  sorted.forEach((r, i) => {
+    const x = pad.left + (i / (n - 1)) * plotW;
+    const y = yFor(r.sensor);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+
+  const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+  grad.addColorStop(0, "#00ff41");
+  grad.addColorStop(0.5, "#ffff00");
+  grad.addColorStop(1, "#ff0033");
+  ctx.strokeStyle = grad;
+  ctx.stroke();
+
+  // Preenchimento
+  const lastX = pad.left + ((n - 1) / (n - 1)) * plotW;
+  ctx.lineTo(lastX, h - pad.bottom);
+  ctx.lineTo(pad.left, h - pad.bottom);
+  ctx.closePath();
+  const fillGrad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+  fillGrad.addColorStop(0, "rgba(0,255,65,.1)");
+  fillGrad.addColorStop(0.5, "rgba(255,255,0,.1)");
+  fillGrad.addColorStop(1, "rgba(255,0,51,.1)");
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+}
+
+// ── Exportar CSV ─────────────────────────────────────────────────────────────
+function exportarCSV() {
+  if (!dadosAtuais.length) { alert("Nenhum dado para exportar."); return; }
+  const header = "ID,Timestamp,Sensor,Estado\n";
+  const linhas = dadosAtuais.map(r =>
+    `${r.id},"${r.timestamp}",${r.sensor},${r.estado}`).join("\n");
+  const blob = new Blob([header + linhas], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `fireguard_historico_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+window.addEventListener("resize", () => renderGrafico(dadosAtuais));
+
+// ── Inicialização ─────────────────────────────────────────────────────────────
+aplicarPeriodo("hoje");
+</script>
+</body>
+</html>

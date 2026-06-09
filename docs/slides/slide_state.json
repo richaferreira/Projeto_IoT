@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "title": "FireGuard IoT: Sistema Inteligente de Alarme de Incêndio",
+    "created": 1781011169.828,
+    "last_updated": 1781011169.828,
+    "total_slides": 18
+  },
+  "slides": [
+    { "id": "slide_1", "state": "edit_pending", "pageNum": 1 },
+    { "id": "slide_2", "state": "edit_pending", "pageNum": 2 },
+    { "id": "slide_3", "state": "edit_pending", "pageNum": 3 },
+    { "id": "slide_4", "state": "edit_pending", "pageNum": 4 },
+    { "id": "slide_5", "state": "edit_pending", "pageNum": 5 },
+    { "id": "slide_6", "state": "edit_pending", "pageNum": 6 },
+    { "id": "slide_7", "state": "edit_pending", "pageNum": 7 },
+    { "id": "slide_8", "state": "edit_pending", "pageNum": 8 },
+    { "id": "slide_9", "state": "edit_pending", "pageNum": 9 },
+    { "id": "slide_10", "state": "edit_pending", "pageNum": 10 },
+    { "id": "slide_11", "state": "edit_pending", "pageNum": 11 },
+    { "id": "slide_12", "state": "edit_pending", "pageNum": 12 },
+    { "id": "slide_13", "state": "edit_pending", "pageNum": 13 },
+    { "id": "slide_14", "state": "edit_pending", "pageNum": 14 },
+    { "id": "slide_15", "state": "edit_pending", "pageNum": 15 },
+    { "id": "slide_16", "state": "edit_pending", "pageNum": 16 },
+    { "id": "slide_17", "state": "edit_pending", "pageNum": 17 },
+    { "id": "slide_18", "state": "edit_pending", "pageNum": 18 }
+  ],
+  "outline": [
+    { "id": "slide_1", "title": "FireGuard IoT: Sistema Inteligente de Alarme de Incêndio", "summary": "Capa com título, subtítulo, autores e data." },
+    { "id": "slide_2", "title": "O que é FireGuard IoT?", "summary": "Visão geral do projeto, integrando hardware, backend e frontend." },
+    { "id": "slide_3", "title": "Arquitetura em Três Camadas", "summary": "Explicação das camadas de sensores, dados e apresentação." },
+    { "id": "slide_4", "title": "Monitoramento Local: Sensor, LEDs e Buzzer", "summary": "Detalhes do funcionamento do hardware Arduino." },
+    { "id": "slide_5", "title": "Comunicação Serial: Arduino → Backend", "summary": "Transmissão de dados via porta serial e armazenamento." },
+    { "id": "slide_6", "title": "Armazenamento Persistente em SQLite", "summary": "Estrutura do banco de dados e registros de exemplo." },
+    { "id": "slide_7", "title": "Endpoints para Consulta de Dados", "summary": "API REST do backend e filtros suportados." },
+    { "id": "slide_8", "title": "Visualização em Tempo Real via Web Serial API", "summary": "Dashboard com gráficos e LEDs virtuais." },
+    { "id": "slide_9", "title": "Consulta e Análise de Dados Históricos", "summary": "Página de histórico com filtros e estatísticas." },
+    { "id": "slide_10", "title": "Geração de Relatórios em CSV", "summary": "Exportação de dados para análise externa." },
+    { "id": "slide_11", "title": "O que o Sistema Faz (13 Requisitos Funcionais)", "summary": "Lista resumida dos requisitos funcionais implementados." },
+    { "id": "slide_12", "title": "Como o Sistema Deve Operar (Qualidade e Desempenho)", "summary": "Resumo dos requisitos não funcionais." },
+    { "id": "slide_13", "title": "Interações entre Atores e Funcionalidades", "summary": "Diagrama de casos de uso do sistema.", "image_plan": "/home/ubuntu/Projeto_IoT/docs/diagrama_casos_uso.png - The slide explicitly mentions and describes a Use Case Diagram, and image 1 is a clear and relevant Use Case Diagram for the FireGuard IoT system." },
+    { "id": "slide_14", "title": "Stack Tecnológico Completo", "summary": "Tecnologias de hardware, firmware, backend e frontend." },
+    { "id": "slide_15", "title": "Sistema Funcional e Testado", "summary": "Resultados e demonstração do sistema." },
+    { "id": "slide_16", "title": "Artefatos do Projeto", "summary": "Documentação e código-fonte entregues." },
+    { "id": "slide_17", "title": "FireGuard IoT: Solução Completa e Integrada", "summary": "Conclusão do projeto." },
+    { "id": "slide_18", "title": "Obrigado pela Atenção!", "summary": "Agradecimentos e informações de contato." }
+  ]
+}

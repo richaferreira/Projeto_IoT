@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .slide-container {
+            width: 1280px; min-height: 720px;
+            background: #E3FAFC;
+            font-family: 'Inter', sans-serif;
+            color: #495057;
+            display: flex; flex-direction: column;
+            padding: 64px;
+            overflow: hidden;
+        }
+        h1, h2 { color: #0B7285; font-weight: 800; }
+        .title-slide {
+            justify-content: center; align-items: center; text-align: center;
+        }
+        .title-slide h1 { font-size: 64px; margin-bottom: 24px; }
+        .title-slide h2 { font-size: 32px; color: #20C997; margin-bottom: 48px; }
+        .title-slide p { font-size: 20px; margin-bottom: 16px; }
+        
+        .content-slide h1 { font-size: 32px; margin-bottom: 32px; border-bottom: 2px solid #20C997; padding-bottom: 16px; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+            padding: 32px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            flex: 1;
+            font-size: 20px;
+            line-height: 1.6;
+        }
+        .card p { margin-bottom: 24px; }
+        .card strong { color: #0B7285; }
+    </style>
+</head>
+<body>
+    <div class="slide-container content-slide">
+        <h1>Resultados e Demonstração</h1>
+<div class='card'>
+<p><strong>Título:</strong> Sistema Funcional e Testado</p>
+<p>O sistema foi implementado completamente e testado com sucesso. O banco de dados foi populado com mais de 700 registros de exemplo cobrindo os últimos 7 dias, permitindo demonstração realista de filtros e estatísticas.</p>
+<p>O backend está rodando em `localhost:5000` e expõe a API REST. O frontend está acessível em `http://localhost:5000/historico.html` e permite consultar o histórico com diversos filtros. O dashboard em tempo real funciona via Web Serial API em navegadores Chrome/Edge modernos.</p>
+<p>Todos os requisitos funcionais e não funcionais foram atendidos conforme especificado.</p>
+</div>
+    </div>
+</body>
+</html>
