@@ -1,0 +1,15 @@
+erDiagram
+    LEITURA {
+        int id PK "Chave Primária, Auto Incremento"
+        datetime timestamp "Data e Hora da leitura"
+        int sensor "Valor do sensor de chama (0-1023)"
+        varchar estado "Estado atual (SEGURO, ALERTA, PERIGO, SILENCIADO)"
+    }
+
+    SISTEMA ||--o{ LEITURA : "registra"
+    
+    SISTEMA {
+        int id_sistema PK
+        varchar nome
+        varchar localizacao
+    }

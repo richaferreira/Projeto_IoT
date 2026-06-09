@@ -15,7 +15,7 @@ Os requisitos funcionais descrevem o que o sistema deve fazer, ou seja, suas fun
 | **RF-05** | **Silenciamento Temporário** | O usuário deve poder silenciar o alarme sonoro temporariamente (10 segundos) pressionando um botão físico. |
 | **RF-06** | **Contagem Regressiva Visual** | Durante o silenciamento, o hardware deve exibir uma contagem regressiva de 9 a 0 em um display de 7 segmentos. |
 | **RF-07** | **Transmissão de Dados** | O hardware deve transmitir os dados do sensor e o estado atual via porta serial USB para um computador conectado. |
-| **RF-08** | **Recepção e Armazenamento (Backend)** | O backend (servidor) deve receber os dados da porta serial e armazená-los em um banco de dados relacional (SQLite), incluindo data, hora, valor do sensor e estado. |
+| **RF-08** | **Recepção e Armazenamento (Backend)** | O backend (servidor) deve receber os dados da porta serial e armazená-los em um banco de dados relacional (**MySQL**), incluindo data, hora, valor do sensor e estado. |
 | **RF-09** | **Dashboard em Tempo Real** | O frontend deve exibir um dashboard em tempo real com os dados do sensor, estado atual, LEDs virtuais e gráfico de variação. |
 | **RF-10** | **Consulta de Histórico** | O frontend deve possuir uma tela específica para consulta dos dados históricos armazenados no banco de dados. |
 | **RF-11** | **Filtros de Consulta** | A tela de histórico deve permitir filtrar os dados por: data específica, intervalo de datas (início e fim) e estado (Seguro, Alerta, Perigo, Silenciado). |
@@ -37,7 +37,7 @@ Os requisitos não funcionais descrevem como o sistema deve operar, abordando as
 | **RNF-07** | **Usabilidade (Interface)** | Usabilidade | A interface gráfica (Frontend) deve ser responsiva, adaptando-se a telas de computadores e dispositivos móveis. |
 | **RNF-08** | **Usabilidade (Feedback)** | Usabilidade | O sistema deve fornecer feedback visual claro e padronizado (cores) tanto no hardware quanto na interface gráfica. |
 | **RNF-09** | **Portabilidade (Hardware)** | Portabilidade | O código embarcado deve ser compatível com placas Arduino UNO (ATmega328P) e compilar na Arduino IDE e PlatformIO. |
-| **RNF-10** | **Portabilidade (Software)** | Portabilidade | O Backend deve ser desenvolvido em Python (Flask) e o banco de dados deve ser embutido (SQLite) para facilitar a execução em diferentes sistemas operacionais. |
+| **RNF-10** | **Portabilidade (Software)** | Portabilidade | O Backend deve ser desenvolvido em Python (Flask) e o banco de dados deve ser relacional (**MySQL**), atendendo ao critério de armazenamento eficiente para fins históricos. |
 | **RNF-11** | **Portabilidade (Navegador)** | Portabilidade | O Dashboard em tempo real via Web Serial API deve funcionar em navegadores baseados em Chromium (Chrome 89+, Edge 89+). |
 | **RNF-12** | **Eficiência (Recursos)** | Eficiência | O código Arduino deve utilizar a macro `F()` para armazenar strings constantes na memória Flash, mantendo o uso de SRAM abaixo de 1 KB. |
 | **RNF-13** | **Manutenibilidade** | Manutenibilidade | O código-fonte deve ser modularizado, com funções de responsabilidade única (SRP) e uso de constantes nomeadas em vez de "números mágicos". |

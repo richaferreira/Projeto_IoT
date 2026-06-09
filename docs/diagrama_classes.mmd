@@ -1,0 +1,56 @@
+classDiagram
+    class Sensor {
+        <<interface>>
+        +lerValor() float
+        +estaConectado() bool
+    }
+
+    class SensorChama {
+        -pino: int
+        -limiarSeguro: int
+        -limiarAlerta: int
+        +lerValor() float
+        +estaConectado() bool
+        +detectarFogo() bool
+    }
+
+    class Arduino {
+        -estadoAtual: EstadoSistema
+        -sensor: Sensor
+        +setup()
+        +loop()
+        +calcularEstado() EstadoSistema
+        +aplicarEstado(estado: EstadoSistema)
+        +transmitirDados()
+    }
+
+    class BackendFlask {
+        -portaSerial: String
+        -baudRate: int
+        +lerSerial()
+        +salvarLeitura()
+        +getLeituras()
+        +getResumo()
+    }
+
+    class BancoDadosMySQL {
+        -host: String
+        -database: String
+        +conectar()
+        +inserirLeitura(chama: int, estado: String)
+        +consultarLeituras(filtros: Dict) List
+    }
+
+    class FrontendWeb {
+        -urlAPI: String
+        +atualizarDashboard()
+        +buscarHistorico(filtros: Dict)
+        +renderizarGrafico()
+        +exportarCSV()
+    }
+
+    Sensor <|-- SensorChama
+    Arduino o-- Sensor
+    Arduino --> BackendFlask : "Comunicação Serial"
+    BackendFlask --> BancoDadosMySQL : "Armazena"
+    FrontendWeb --> BackendFlask : "Consome API REST"

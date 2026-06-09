@@ -430,6 +430,7 @@ async function buscarDados() {
   const limite  = document.getElementById("filtLimite").value;
 
   const params = new URLSearchParams();
+
   if (dataIni) params.set("data_inicio", dataIni);
   if (dataFim) params.set("data_fim", dataFim);
   if (estado && estado !== "TODOS") params.set("estado", estado);

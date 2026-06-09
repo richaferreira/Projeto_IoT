@@ -1,27 +1,28 @@
 // =============================================================================
-// PROJETO: Alarme de Incendio com Sensor de Chama e Display de 7 Segmentos
+// PROJETO: Alarme de Incêndio com Sensor de Chama Infravermelho
 // Plataforma: Arduino UNO
+// Disciplina: Internet das Coisas
+// =============================================================================
+// SENSOR UTILIZADO:
+//   Sensor de Chama Infravermelho (pino A0) — detecta presença de chama
 // =============================================================================
 
 // ===================== CONFIGURACAO DO DISPLAY ===============================
-// Se o display nao mostrar os numeros corretos, troque para false:
 const bool ANODO_COMUM = false;  // true = anodo comum | false = catodo comum
-// =============================================================================
 
 // ---------- Limiares de deteccao (ajuste conforme o ambiente) ----------------
-const int LIMIAR_SEGURO     = 700;  // acima: ambiente seguro (verde)
-const int LIMIAR_ALERTA     = 300;  // entre ALERTA e SEGURO: chama detectada (amarelo)
-                                    // abaixo: perigo critico (vermelho + buzzer)
-
-const int HISTERESE         = 30;   // margem para evitar oscilacao entre estados
+const int LIMIAR_SEGURO = 700;  // acima: ambiente seguro (verde)
+const int LIMIAR_ALERTA = 300;  // entre ALERTA e SEGURO: chama detectada (amarelo)
+                                // abaixo: perigo critico (vermelho + buzzer)
+const int HISTERESE     = 30;   // margem para evitar oscilacao entre estados
 
 // ---------- Temporizadores ---------------------------------------------------
 const unsigned long INTERVALO_LEITURA_MS = 150;   // periodo entre leituras do sensor
-const unsigned long DEBOUNCE_MS          = 50;     // debounce do botao
-const unsigned long CONTAGEM_REGRESSIVA  = 10;     // segundos do silenciamento
-const unsigned int  FREQ_ALARME_HZ       = 2500;   // frequencia do alarme critico
-const unsigned int  FREQ_BIPE_HZ         = 2000;   // frequencia do bipe de contagem
-const unsigned int  DURACAO_BIPE_MS      = 50;     // duracao do bipe de contagem
+const unsigned long DEBOUNCE_MS          = 50;    // debounce do botao
+const unsigned long CONTAGEM_REGRESSIVA  = 10;    // segundos do silenciamento
+const unsigned int  FREQ_ALARME_HZ       = 2500;  // frequencia do alarme critico
+const unsigned int  FREQ_BIPE_HZ         = 2000;  // frequencia do bipe de contagem
+const unsigned int  DURACAO_BIPE_MS      = 50;    // duracao do bipe de contagem
 
 // ---------- Mapeamento de pinos: Display 7 segmentos -------------------------
 const int SEG_A  = 13;
@@ -50,8 +51,8 @@ const byte DIGITOS[10][7] = {
   {1,1,1,1,0,1,1}   // 9
 };
 
-// ---------- Mapeamento de pinos: Sensor, botao e buzzer ----------------------
-const int PINO_SENSOR = A0;
+// ---------- Mapeamento de pinos: Sensores, botao e buzzer --------------------
+const int PINO_SENSOR = A0;  // Sensor de chama infravermelho
 const int PINO_BOTAO  = 2;
 const int PINO_BUZZER = 4;
 
@@ -77,14 +78,14 @@ enum EstadoSistema {
 };
 
 // ---------- Variaveis de controle --------------------------------------------
-EstadoSistema estadoAtual     = SEGURO;
-EstadoSistema estadoAnterior  = SEGURO;
+EstadoSistema estadoAtual    = SEGURO;
+EstadoSistema estadoAnterior = SEGURO;
 
-bool           leituraBotaoAnterior   = HIGH;
-bool           estadoBotaoDebounced   = HIGH;
-unsigned long  tempoAnteriorLeitura   = 0;
-unsigned long  tempoUltimoBotao       = 0;
-bool           primeiraLeitura        = true;
+bool           leituraBotaoAnterior  = HIGH;
+bool           estadoBotaoDebounced  = HIGH;
+unsigned long  tempoAnteriorLeitura  = 0;
+unsigned long  tempoUltimoBotao      = 0;
+bool           primeiraLeitura       = true;
 
 // =============================================================================
 // SETUP
@@ -109,6 +110,7 @@ void setup() {
   resetLEDs();
 
   Serial.println(F("=== Alarme de Incendio IoT ==="));
+  Serial.println(F("Sensor: Chama Infravermelho (A0)"));
   Serial.print(F("Display configurado como: "));
   Serial.println(ANODO_COMUM ? F("ANODO COMUM") : F("CATODO COMUM"));
   Serial.println(F("Limiares configurados:"));
@@ -116,7 +118,7 @@ void setup() {
   Serial.print(F("  Alerta  > ")); Serial.print(LIMIAR_ALERTA);
   Serial.print(F(" e <= ")); Serial.println(LIMIAR_SEGURO);
   Serial.print(F("  Perigo <= ")); Serial.println(LIMIAR_ALERTA);
-  Serial.println(F("Sistema pronto - monitorando chama..."));
+  Serial.println(F("Sistema pronto - monitorando..."));
   Serial.println();
 }
 
@@ -131,6 +133,7 @@ void loop() {
   }
 
   unsigned long agora = millis();
+
   if (agora - tempoAnteriorLeitura < INTERVALO_LEITURA_MS) {
     return;
   }
@@ -141,8 +144,8 @@ void loop() {
 
   if (novoEstado != estadoAtual || primeiraLeitura) {
     primeiraLeitura = false;
-    estadoAnterior = estadoAtual;
-    estadoAtual = novoEstado;
+    estadoAnterior  = estadoAtual;
+    estadoAtual     = novoEstado;
     aplicarEstado(estadoAtual);
     imprimirEstado(nivelChama);
   }
@@ -153,23 +156,19 @@ void loop() {
 // =============================================================================
 
 EstadoSistema calcularEstado(int leitura) {
-  // Histerese: so muda de estado se ultrapassar o limiar + margem
   switch (estadoAtual) {
     case SEGURO:
-      if (leitura <= LIMIAR_ALERTA - HISTERESE) return PERIGO;
-      if (leitura <= LIMIAR_SEGURO - HISTERESE) return ALERTA;
+      if (leitura <= LIMIAR_ALERTA - HISTERESE)  return PERIGO;
+      if (leitura <= LIMIAR_SEGURO - HISTERESE)  return ALERTA;
       return SEGURO;
-
     case ALERTA:
-      if (leitura > LIMIAR_SEGURO + HISTERESE)  return SEGURO;
+      if (leitura > LIMIAR_SEGURO + HISTERESE)   return SEGURO;
       if (leitura <= LIMIAR_ALERTA - HISTERESE)  return PERIGO;
       return ALERTA;
-
     case PERIGO:
-      if (leitura > LIMIAR_SEGURO + HISTERESE)  return SEGURO;
+      if (leitura > LIMIAR_SEGURO + HISTERESE)   return SEGURO;
       if (leitura > LIMIAR_ALERTA + HISTERESE)   return ALERTA;
       return PERIGO;
-
     default:
       return SEGURO;
   }
@@ -184,33 +183,31 @@ void aplicarEstado(EstadoSistema estado) {
       digitalWrite(LED_VERDE_1, HIGH);
       digitalWrite(LED_VERDE_2, HIGH);
       break;
-
     case ALERTA:
       digitalWrite(LED_AMARELO_1, HIGH);
       digitalWrite(LED_AMARELO_2, HIGH);
       break;
-
     case PERIGO:
       digitalWrite(LED_VERMELHO_1, HIGH);
       digitalWrite(LED_VERMELHO_2, HIGH);
       tone(PINO_BUZZER, FREQ_ALARME_HZ);
       break;
-
     default:
       break;
   }
 }
 
-void imprimirEstado(int leitura) {
+void imprimirEstado(int leituraChama) {
+  // Formato: "Sensor: 850 | Estado: SEGURO"
   Serial.print(F("Sensor: "));
-  Serial.print(leitura);
+  Serial.print(leituraChama);
   Serial.print(F(" | Estado: "));
 
   switch (estadoAtual) {
-    case SEGURO:  Serial.println(F("SEGURO (verde)"));   break;
-    case ALERTA:  Serial.println(F("ALERTA (amarelo)")); break;
-    case PERIGO:  Serial.println(F("PERIGO (vermelho + buzzer)")); break;
-    default:      Serial.println(F("DESCONHECIDO"));     break;
+    case SEGURO:  Serial.println(F("SEGURO"));      break;
+    case ALERTA:  Serial.println(F("ALERTA"));      break;
+    case PERIGO:  Serial.println(F("PERIGO"));      break;
+    default:      Serial.println(F("DESCONHECIDO")); break;
   }
 }
 
@@ -261,7 +258,6 @@ void executarSilenciamento() {
 
 void desligarDisplay() {
   for (int i = 0; i < NUM_SEGMENTOS; i++) {
-    // Anodo comum: HIGH desliga | Catodo comum: LOW desliga
     digitalWrite(PINOS_DISPLAY[i], ANODO_COMUM ? HIGH : LOW);
   }
 }
@@ -271,18 +267,13 @@ void mostrarNumero(int num) {
     desligarDisplay();
     return;
   }
-
   for (int i = 0; i < 7; i++) {
     if (ANODO_COMUM) {
-      // Anodo comum: inverte (1 -> LOW = acende, 0 -> HIGH = apaga)
       digitalWrite(PINOS_DISPLAY[i], !DIGITOS[num][i]);
     } else {
-      // Catodo comum: direto (1 -> HIGH = acende, 0 -> LOW = apaga)
       digitalWrite(PINOS_DISPLAY[i], DIGITOS[num][i]);
     }
   }
-
-  // Desliga o ponto decimal
   digitalWrite(PINOS_DISPLAY[7], ANODO_COMUM ? HIGH : LOW);
 }
 
