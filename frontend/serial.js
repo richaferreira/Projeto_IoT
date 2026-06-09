@@ -1,5 +1,5 @@
 // =============================================================================
-// Alarme de Incêndio IoT — Dashboard com Web Serial API (grid redesign)
+// Alarme de Incêndio IoT — Dashboard com Web Serial API
 // Conecta ao Arduino real via porta serial USB (Chrome 89+ / Edge 89+)
 // =============================================================================
 
@@ -32,51 +32,50 @@
   // ---------- DOM refs -------------------------------------------------------
   const $ = (id) => document.getElementById(id);
 
-  // Status
-  const statusCell   = $("statusCell");
-  const statusIcon   = $("statusIcon");
-  const statusText   = $("statusText");
-  const statusDesc   = $("statusDesc");
+  // Status — IDs corrigidos para corresponder ao serial.html
+  const statusBadge = $("statusBadge");   // era: statusCell
+  const statusWord  = $("statusWord");    // era: statusText
+  const statusDesc  = $("statusDesc");
 
-  // LEDs
-  const ledGreen1  = $("ledGreen1");
-  const ledGreen2  = $("ledGreen2");
-  const ledYellow1 = $("ledYellow1");
-  const ledYellow2 = $("ledYellow2");
-  const ledRed1    = $("ledRed1");
-  const ledRed2    = $("ledRed2");
+  // LEDs — IDs corrigidos para corresponder ao serial.html
+  const ledGreen1  = $("lg1");            // era: ledGreen1
+  const ledGreen2  = $("lg2");            // era: ledGreen2
+  const ledYellow1 = $("ly1");            // era: ledYellow1
+  const ledYellow2 = $("ly2");            // era: ledYellow2
+  const ledRed1    = $("lr1");            // era: ledRed1
+  const ledRed2    = $("lr2");            // era: ledRed2
 
-  // Gauge
+  // Gauge — IDs corrigidos para corresponder ao serial.html
   const gaugeCanvas = $("gaugeCanvas");
   const gaugeCtx    = gaugeCanvas.getContext("2d");
-  const gaugeValue  = $("gaugeValue");
-  const sensorMin   = $("sensorMin");
-  const sensorMax   = $("sensorMax");
-  const sensorAvg   = $("sensorAvg");
+  const gaugeValue  = $("gaugeVal");      // era: gaugeValue
+  const sensorMin   = $("sMin");          // era: sensorMin
+  const sensorMax   = $("sMax");          // era: sensorMax
+  const sensorAvg   = $("sAvg");          // era: sensorAvg
 
   // Chart
   const chartCanvas = $("chartCanvas");
   const ctx         = chartCanvas.getContext("2d");
 
-  // Log
-  const serialLog    = $("serialLog");
-  const btnConnect   = $("btnConnect");
-  const btnClearLog  = $("btnClearLog");
-  const baudRate     = $("baudRate");
-  const serialDot    = $("serialDot");
+  // Log e controles serial
+  const serialLog        = $("serialLog");
+  const btnConnect       = $("btnConnect");
+  const btnClearLog      = $("btnClearLog");
+  const baudRate         = $("baudRate");
+  const serialDot        = $("serialDot");
   const serialStatusText = $("serialStatusText");
-  const display7Hint = $("display7Hint");
+  const display7Hint     = $("dispHint");  // era: display7Hint
 
-  // State bar
+  // State pills (header) — IDs corrigidos para corresponder ao serial.html
   const stateBarNodes = {
-    SEGURO:     $("stateBarSeguro"),
-    ALERTA:     $("stateBarAlerta"),
-    PERIGO:     $("stateBarPerigo"),
-    SILENCIADO: $("stateBarSilenciado"),
+    SEGURO:     $("sp-SEGURO"),           // era: stateBarSeguro
+    ALERTA:     $("sp-ALERTA"),           // era: stateBarAlerta
+    PERIGO:     $("sp-PERIGO"),           // era: stateBarPerigo
+    SILENCIADO: $("sp-SILENCIADO"),       // era: stateBarSilenciado
   };
 
-  // Clock
-  const headerClock = $("headerClock");
+  // Clock — ID corrigido para corresponder ao serial.html
+  const headerClock = $("clockEl");       // era: headerClock
 
   // ---------- Estado ---------------------------------------------------------
   let estadoAtual = null;
@@ -147,10 +146,12 @@
       const baud = parseInt(baudRate.value, 10);
       await port.open({ baudRate: baud });
 
-      serialDot.classList.remove("serial-status__dot--off");
-      serialDot.classList.add("serial-status__dot--on");
+      // Corrigido: usa classes "on"/"off" definidas no serial.html (era: serial-status__dot--on/off)
+      serialDot.classList.remove("off");
+      serialDot.classList.add("on");
       serialStatusText.textContent = `Conectado (${baud})`;
       btnConnect.textContent = "🔌 Desconectar";
+      btnConnect.classList.add("connected");
 
       logSerial(`Conectado (${baud} baud)`, "info");
       logSerial("Aguardando dados...", "info");
@@ -184,10 +185,12 @@
       }
     } catch (_) {}
 
-    serialDot.classList.remove("serial-status__dot--on");
-    serialDot.classList.add("serial-status__dot--off");
+    // Corrigido: usa classes "on"/"off" definidas no serial.html (era: serial-status__dot--on/off)
+    serialDot.classList.remove("on");
+    serialDot.classList.add("off");
     serialStatusText.textContent = "Desconectado";
-    btnConnect.textContent = "🔌 Conectar ao Arduino";
+    btnConnect.textContent = "⬡ Conectar ao Arduino";
+    btnConnect.classList.remove("connected");
 
     logSerial("Desconectado.", "info");
   }
@@ -282,50 +285,51 @@
   }
 
   // ---------- UI updates -----------------------------------------------------
+  // Classe CSS "on" ativa o LED (era "led--on" — corrigido para corresponder ao style.css)
   function setLEDs(green, yellow, red) {
-    ledGreen1.classList.toggle("led--on", green);
-    ledGreen2.classList.toggle("led--on", green);
-    ledYellow1.classList.toggle("led--on", yellow);
-    ledYellow2.classList.toggle("led--on", yellow);
-    ledRed1.classList.toggle("led--on", red);
-    ledRed2.classList.toggle("led--on", red);
+    ledGreen1.classList.toggle("on", green);
+    ledGreen2.classList.toggle("on", green);
+    ledYellow1.classList.toggle("on", yellow);
+    ledYellow2.classList.toggle("on", yellow);
+    ledRed1.classList.toggle("on", red);
+    ledRed2.classList.toggle("on", red);
   }
 
+  // Mapeamento de estado para classes CSS do status-badge (style.css)
+  // safe = SEGURO | warn = ALERTA | danger = PERIGO | muted-s = SILENCIADO/aguardando
   function updateStatusUI(estado) {
-    statusCell.className = "cell cell--status";
-    
+    // Remove todas as classes de estado anteriores
+    statusBadge.classList.remove("safe", "warn", "danger", "muted-s");
+
     switch (estado) {
       case ESTADO.SEGURO:
-        statusCell.classList.add("status--seguro");
-        statusIcon.textContent = "✔";
-        statusText.textContent = "SEGURO";
+        statusBadge.classList.add("safe");
+        statusWord.textContent = "SEGURO";
         statusDesc.textContent = "Nenhuma chama detectada";
         setLEDs(true, false, false);
         break;
       case ESTADO.ALERTA:
-        statusCell.classList.add("status--alerta");
-        statusIcon.textContent = "⚠";
-        statusText.textContent = "ALERTA";
+        statusBadge.classList.add("warn");
+        statusWord.textContent = "ALERTA";
         statusDesc.textContent = "Chama detectada";
         setLEDs(false, true, false);
         break;
       case ESTADO.PERIGO:
-        statusCell.classList.add("status--perigo");
-        statusIcon.textContent = "🔥";
-        statusText.textContent = "PERIGO";
+        statusBadge.classList.add("danger");
+        statusWord.textContent = "PERIGO";
         statusDesc.textContent = "Perigo crítico!";
         setLEDs(false, false, true);
         break;
       case ESTADO.SILENCIADO:
-        statusCell.classList.add("status--silenciado");
-        statusIcon.textContent = "◈";
-        statusText.textContent = "SILENCIADO";
+        statusBadge.classList.add("muted-s");
+        statusWord.textContent = "SILENCIADO";
         statusDesc.textContent = "Alarme silenciado";
         setLEDs(false, false, false);
         break;
     }
   }
 
+  // State pills: usa classe "active" (já definida no style.css)
   function updateStateBar(estado) {
     Object.entries(stateBarNodes).forEach(([key, node]) => {
       node.classList.toggle("active", key === estado);
@@ -566,23 +570,25 @@
   }
 
   // ---------- Display 7 segmentos -------------------------------------------
+  // Classe CSS "on" ativa o segmento (era "seg--on" — corrigido para corresponder ao style.css)
   function mostrarNumero(num) {
     if (num < 0 || num > 9) { desligarDisplay(); return; }
     const segs = DIGITOS[num];
-    SEG_IDS.forEach((id, i) => $(id).classList.toggle("seg--on", segs[i] === 1));
-    $("segDP").classList.remove("seg--on");
+    SEG_IDS.forEach((id, i) => $(id).classList.toggle("on", segs[i] === 1));
+    $("segDP").classList.remove("on");
   }
 
   function desligarDisplay() {
-    SEG_IDS.forEach((id) => $(id).classList.remove("seg--on"));
-    $("segDP").classList.remove("seg--on");
+    SEG_IDS.forEach((id) => $(id).classList.remove("on"));
+    $("segDP").classList.remove("on");
   }
 
   // ---------- Serial log -----------------------------------------------------
+  // Classes de log corrigidas: "log-line--{tipo}" → "log-line {tipo}" (style.css)
   function logSerial(msg, type) {
     const p = document.createElement("p");
     p.className = "log-line";
-    if (type) p.classList.add(`log-line--${type}`);
+    if (type) p.classList.add(type);  // era: `log-line--${type}`
     p.textContent = msg;
     serialLog.appendChild(p);
     serialLog.scrollTop = serialLog.scrollHeight;

@@ -1,5 +1,5 @@
 // =============================================================================
-// Alarme de Incêndio IoT — Simulador (grid redesign)
+// Alarme de Incêndio IoT — Simulador
 // =============================================================================
 
 (() => {
@@ -36,58 +36,57 @@
   // ---------- DOM refs -------------------------------------------------------
   const $ = (id) => document.getElementById(id);
 
-  // Status
-  const statusCell = $("statusCell");
-  const statusIcon = $("statusIcon");
-  const statusText = $("statusText");
-  const statusDesc = $("statusDesc");
+  // Status — IDs corrigidos para corresponder ao index.html
+  const statusBadge = $("statusBadge");   // era: statusCell
+  const statusWord  = $("statusWord");    // era: statusText (statusIcon não existe no HTML)
+  const statusDesc  = $("statusDesc");
 
-  // LEDs
-  const ledGreen1 = $("ledGreen1");
-  const ledGreen2 = $("ledGreen2");
-  const ledYellow1 = $("ledYellow1");
-  const ledYellow2 = $("ledYellow2");
-  const ledRed1 = $("ledRed1");
-  const ledRed2 = $("ledRed2");
+  // LEDs — IDs corrigidos para corresponder ao index.html
+  const ledGreen1  = $("lg1");            // era: ledGreen1
+  const ledGreen2  = $("lg2");            // era: ledGreen2
+  const ledYellow1 = $("ly1");            // era: ledYellow1
+  const ledYellow2 = $("ly2");            // era: ledYellow2
+  const ledRed1    = $("lr1");            // era: ledRed1
+  const ledRed2    = $("lr2");            // era: ledRed2
 
-  // Gauge
+  // Gauge — IDs corrigidos para corresponder ao index.html
   const gaugeCanvas = $("gaugeCanvas");
-  const gaugeCtx = gaugeCanvas.getContext("2d");
-  const gaugeValue = $("gaugeValue");
-  const sensorMin = $("sensorMin");
-  const sensorMax = $("sensorMax");
-  const sensorAvg = $("sensorAvg");
+  const gaugeCtx    = gaugeCanvas.getContext("2d");
+  const gaugeValue  = $("gaugeVal");      // era: gaugeValue
+  const sensorMin   = $("sMin");          // era: sensorMin
+  const sensorMax   = $("sMax");          // era: sensorMax
+  const sensorAvg   = $("sAvg");          // era: sensorAvg
 
   // Chart
   const chartCanvas = $("chartCanvas");
-  const ctx = chartCanvas.getContext("2d");
+  const ctx         = chartCanvas.getContext("2d");
 
   // Log
   const serialLog = $("serialLog");
 
   // Controls
-  const flameSlider = $("flameSlider");
-  const flameOutput = $("flameOutput");
+  const flameSlider  = $("flameSlider");
+  const flameOutput  = $("sliderVal");    // era: flameOutput
 
-  const btnSeguro = $("btnSeguro");
-  const btnAlerta = $("btnAlerta");
-  const btnPerigo = $("btnPerigo");
+  const btnSeguro    = $("btnSeguro");
+  const btnAlerta    = $("btnAlerta");
+  const btnPerigo    = $("btnPerigo");
   const btnSilenciar = $("btnSilenciar");
-  const btnClearLog = $("btnClearLog");
-  const toggleAuto = $("toggleAuto");
+  const btnClearLog  = $("btnClearLog");
+  const toggleAuto   = $("toggleAuto");
 
-  const display7Hint = $("display7Hint");
+  const display7Hint = $("dispHint");     // era: display7Hint
 
-  // State bar
+  // State pills (header) — IDs corrigidos para corresponder ao index.html
   const stateBarNodes = {
-    SEGURO: $("stateBarSeguro"),
-    ALERTA: $("stateBarAlerta"),
-    PERIGO: $("stateBarPerigo"),
-    SILENCIADO: $("stateBarSilenciado"),
+    SEGURO:     $("sp-SEGURO"),           // era: stateBarSeguro
+    ALERTA:     $("sp-ALERTA"),           // era: stateBarAlerta
+    PERIGO:     $("sp-PERIGO"),           // era: stateBarPerigo
+    SILENCIADO: $("sp-SILENCIADO"),       // era: stateBarSilenciado
   };
 
-  // Clock
-  const headerClock = $("headerClock");
+  // Clock — ID corrigido para corresponder ao index.html
+  const headerClock = $("clockEl");       // era: headerClock
 
   // ---------- Estado da simulação --------------------------------------------
   let estadoAtual = ESTADO.SEGURO;
@@ -157,12 +156,12 @@
         if (leitura <= LIMIAR_SEGURO - HISTERESE) return ESTADO.ALERTA;
         return ESTADO.SEGURO;
       case ESTADO.ALERTA:
-        if (leitura > LIMIAR_SEGURO + HISTERESE) return ESTADO.SEGURO;
-        if (leitura <= LIMIAR_ALERTA - HISTERESE) return ESTADO.PERIGO;
+        if (leitura > LIMIAR_SEGURO + HISTERESE)  return ESTADO.SEGURO;
+        if (leitura <= LIMIAR_ALERTA - HISTERESE)  return ESTADO.PERIGO;
         return ESTADO.ALERTA;
       case ESTADO.PERIGO:
-        if (leitura > LIMIAR_SEGURO + HISTERESE) return ESTADO.SEGURO;
-        if (leitura > LIMIAR_ALERTA + HISTERESE) return ESTADO.ALERTA;
+        if (leitura > LIMIAR_SEGURO + HISTERESE)  return ESTADO.SEGURO;
+        if (leitura > LIMIAR_ALERTA + HISTERESE)   return ESTADO.ALERTA;
         return ESTADO.PERIGO;
       default:
         return ESTADO.SEGURO;
@@ -182,47 +181,47 @@
   updateClock();
 
   // ---------- Atualização da UI ----------------------------------------------
+  // Classe CSS "on" ativa o LED (era "led--on" — corrigido para corresponder ao style.css)
   function setLEDs(green, yellow, red) {
-    ledGreen1.classList.toggle("led--on", green);
-    ledGreen2.classList.toggle("led--on", green);
-    ledYellow1.classList.toggle("led--on", yellow);
-    ledYellow2.classList.toggle("led--on", yellow);
-    ledRed1.classList.toggle("led--on", red);
-    ledRed2.classList.toggle("led--on", red);
+    ledGreen1.classList.toggle("on", green);
+    ledGreen2.classList.toggle("on", green);
+    ledYellow1.classList.toggle("on", yellow);
+    ledYellow2.classList.toggle("on", yellow);
+    ledRed1.classList.toggle("on", red);
+    ledRed2.classList.toggle("on", red);
   }
 
+  // Mapeamento de estado para classes CSS do status-badge (style.css)
+  // safe = SEGURO | warn = ALERTA | danger = PERIGO | muted-s = SILENCIADO
   function updateStatusUI(estado) {
-    statusCell.className = "cell cell--status";
-    
+    // Remove todas as classes de estado anteriores
+    statusBadge.classList.remove("safe", "warn", "danger", "muted-s");
+
     switch (estado) {
       case ESTADO.SEGURO:
-        statusCell.classList.add("status--seguro");
-        statusIcon.textContent = "✔";
-        statusText.textContent = "SEGURO";
+        statusBadge.classList.add("safe");
+        statusWord.textContent = "SEGURO";
         statusDesc.textContent = "Nenhuma chama detectada";
         setLEDs(true, false, false);
         stopAlarmTone();
         break;
       case ESTADO.ALERTA:
-        statusCell.classList.add("status--alerta");
-        statusIcon.textContent = "⚠";
-        statusText.textContent = "ALERTA";
+        statusBadge.classList.add("warn");
+        statusWord.textContent = "ALERTA";
         statusDesc.textContent = "Chama detectada";
         setLEDs(false, true, false);
         stopAlarmTone();
         break;
       case ESTADO.PERIGO:
-        statusCell.classList.add("status--perigo");
-        statusIcon.textContent = "🔥";
-        statusText.textContent = "PERIGO";
+        statusBadge.classList.add("danger");
+        statusWord.textContent = "PERIGO";
         statusDesc.textContent = "Perigo crítico!";
         setLEDs(false, false, true);
         startAlarmTone();
         break;
       case ESTADO.SILENCIADO:
-        statusCell.classList.add("status--silenciado");
-        statusIcon.textContent = "◈";
-        statusText.textContent = "SILENCIADO";
+        statusBadge.classList.add("muted-s");
+        statusWord.textContent = "SILENCIADO";
         statusDesc.textContent = "Alarme silenciado";
         setLEDs(false, false, false);
         stopAlarmTone();
@@ -230,6 +229,7 @@
     }
   }
 
+  // State pills: usa classe "active" (já definida no style.css)
   function updateStateBar(estado) {
     Object.entries(stateBarNodes).forEach(([key, node]) => {
       node.classList.toggle("active", key === estado);
@@ -459,6 +459,7 @@
   }
 
   // ---------- Display 7 segmentos -------------------------------------------
+  // Classe CSS "on" ativa o segmento (era "seg--on" — corrigido para corresponder ao style.css)
   function mostrarNumero(num) {
     if (num < 0 || num > 9) {
       desligarDisplay();
@@ -467,25 +468,26 @@
     const segs = DIGITOS[num];
     SEG_IDS.forEach((id, i) => {
       const el = $(id);
-      el.classList.toggle("seg--on", segs[i] === 1);
+      el.classList.toggle("on", segs[i] === 1);
     });
-    $("segDP").classList.remove("seg--on");
+    $("segDP").classList.remove("on");
   }
 
   function desligarDisplay() {
-    SEG_IDS.forEach((id) => $(id).classList.remove("seg--on"));
-    $("segDP").classList.remove("seg--on");
+    SEG_IDS.forEach((id) => $(id).classList.remove("on"));
+    $("segDP").classList.remove("on");
   }
 
   // ---------- Serial log -----------------------------------------------------
+  // Classes de log corrigidas: "log-line--{tipo}" → "log-line {tipo}" (style.css)
   function logSerial(msg, type) {
     const p = document.createElement("p");
     p.className = "log-line";
-    if (type) p.classList.add(`log-line--${type}`);
-    
+    if (type) p.classList.add(type);  // era: `log-line--${type}`
+
     const timestamp = new Date().toLocaleTimeString();
     p.textContent = `[${timestamp}] ${msg}`;
-    
+
     serialLog.appendChild(p);
     serialLog.scrollTop = serialLog.scrollHeight;
 
@@ -541,9 +543,9 @@
       updateStateBar(estadoAtual);
 
       const typeMap = {
-        SEGURO: "safe",
-        ALERTA: "warn",
-        PERIGO: "danger",
+        SEGURO:  "safe",
+        ALERTA:  "warn",
+        PERIGO:  "danger",
       };
       logSerial(
         `Sensor: ${nivelSensor} | Estado: ${estadoAtual}`,
